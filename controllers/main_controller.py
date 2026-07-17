@@ -203,6 +203,13 @@ class MainController:
 
         self.win.set_sending(True)
         try:
+            # Enriquecer registros con datos de maquinas para que el informe
+            # muestre marca/modelo/sector/isla/denominacion en la tabla.
+            registros_enriquecidos = self._enriquecer_registros(list(resumen.registros))
+            # Reemplazar registros en el resumen para el envio (sin perder
+            # los conteos ya calculados).
+            resumen.registros = registros_enriquecidos
+
             resultado = svc_outlook.enviar_informe_turno(
                 resumen=resumen,
                 usuario=cfg.get("usuario_actual", "Operador"),
@@ -279,14 +286,26 @@ class MainController:
     # Refresco de widgets
     # ------------------------------------------------------------------
 
-    def refrescar_lista_turno(self) -> None:
-        registros = svc_inc.listar_turno(date.today(), self._turno_actual)
-        # Enriquecer con sector/marca para la tabla
+    def _enriquecer_registros(self, registros: list[dict]) -> list[dict]:
+        """Agrega sector/isla/marca/modelo/denominacion a cada registro.
+
+        Los registros vienen de ``incidencias`` que no tienen join con
+        ``maquinas``. Para que la tabla y el informe muestren info completa,
+        cruzamos con el catalogo de maquinas.
+        """
         for r in registros:
             m = svc_maq.obtener_por_numero(r["numero_maquina"])
             if m:
                 r["sector"] = m["sector"]
+                r["isla"] = m["isla"]
                 r["marca"] = m["marca"]
+                r["modelo"] = m["modelo"]
+                r["denominacion"] = m["denominacion"]
+        return registros
+
+    def refrescar_lista_turno(self) -> None:
+        registros = svc_inc.listar_turno(date.today(), self._turno_actual)
+        self._enriquecer_registros(registros)
         self.win.set_table_rows(registros)
 
     def _refrescar_quick_stats(self) -> None:

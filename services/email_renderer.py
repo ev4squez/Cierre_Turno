@@ -100,13 +100,27 @@ def _badge_estado(estado: str) -> str:
 
 
 def _build_fila_tabla(r: dict, idx: int) -> str:
-    """Renderiza una fila de la tabla principal del informe."""
+    """Renderiza una fila de la tabla principal del informe.
+
+    Cada fila muestra: hora, numero, denominacion del juego (debajo
+    del codigo), sector/isla, marca/modelo, problema+accion, estado,
+    tecnico.
+    """
     bg = "#FFFFFF" if idx % 2 == 0 else "#F8FAFC"
     problema = _esc(r.get("problema") or "")
     accion = _esc(r.get("accion_realizada") or "")
+    numero = _esc(r.get("numero_maquina") or "")
+    denom = _esc(r.get("denominacion") or "")
+    # Si hay denominacion, la mostramos en letra pequena debajo del numero
+    numero_cell = f"{numero}"
+    if denom:
+        numero_cell = (
+            f"{numero}<br>"
+            f"<span style='color:#94A3B8; font-weight:400; font-size:11px;'>{denom}</span>"
+        )
     return f'''<tr style="background-color:{bg};">
                 <td style="padding:10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#1B2430; border-top:1px solid #EBEEF3;">{_esc(r.get("hora") or "")}</td>
-                <td style="padding:10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; font-weight:700; color:#1B2430; border-top:1px solid #EBEEF3;">{_esc(r.get("numero_maquina") or "")}</td>
+                <td style="padding:10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; font-weight:700; color:#1B2430; border-top:1px solid #EBEEF3;">{numero_cell}</td>
                 <td class="hide-mobile" style="padding:10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#475569; border-top:1px solid #EBEEF3;">{_esc(r.get("sector") or "")} / {_esc(r.get("isla") or "")}</td>
                 <td class="hide-mobile" style="padding:10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#475569; border-top:1px solid #EBEEF3;">{_esc((r.get("marca") or "") + (" " + r["modelo"] if r.get("modelo") else ""))}</td>
                 <td style="padding:10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#475569; border-top:1px solid #EBEEF3;">{problema}<br><span style="color:#94A3B8;">{accion}</span></td>
@@ -151,6 +165,10 @@ def render_informe(
     pendientes: list[dict] | None = None,
     observaciones: list[str] | None = None,
     tiempo_promedio_min: int | None = None,
+    empresa: dict | None = None,
+    destinatarios: list[str] | None = None,
+    cc: list[str] | None = None,
+    firmante: str | None = None,
 ) -> str:
     """Devuelve el HTML final listo para enviar.
 
@@ -177,7 +195,47 @@ def render_informe(
         Tiempo promedio de reparacion (ej. 38). Si es None, calcula
         a partir de registros Operativa vs no-Operativa. Si no se
         puede calcular, muestra "N/D".
+    empresa:
+        Dict con ``nombre``, ``departamento`` y opcional ``color_corporativo``.
+        Si es None, usa defaults del config.
+    destinatarios / cc:
+        Listas de emails a mostrar al pie del informe (seccion "Enviado a").
+    firmante:
+        Texto de la firma. Si es None, usa el default del config.
     """
+    # Empresa: defaults si no se pasa
+    if empresa is None:
+        try:
+            from services import configuracion as svc_cfg
+            cfg = svc_cfg.obtener()
+            empresa = cfg.get("empresa", {})
+        except Exception:
+            empresa = {}
+    nombre_empresa = empresa.get("nombre", "Casino Ovalle")
+    departamento = empresa.get("departamento", "Departamento Tecnico y Sistemas")
+    color_corp = empresa.get("color_corporativo", "#1E5AA8") or "#1E5AA8"
+
+    # Destinatarios
+    if destinatarios is None or cc is None:
+        try:
+            from services import configuracion as svc_cfg
+            cfg = svc_cfg.obtener()
+            correo_cfg = cfg.get("correo", {})
+            if destinatarios is None:
+                destinatarios = correo_cfg.get("destinatarios", []) or []
+            if cc is None:
+                cc = correo_cfg.get("cc", []) or []
+        except Exception:
+            destinatarios = destinatarios or []
+            cc = cc or []
+
+    if firmante is None:
+        try:
+            from services import configuracion as svc_cfg
+            firmante = svc_cfg.obtener().get("correo", {}).get("firma", "")
+        except Exception:
+            firmante = ""
+
     pendientes = pendientes if pendientes is not None else [
         r for r in registros if r.get("estado_final") != "Operativa"
     ]
@@ -223,6 +281,33 @@ def render_informe(
         f"{fds} fuera de servicio, {pendientes_rep} pendiente de repuesto."
     )
 
+    # Bloque "Enviado a" (lista de destinatarios)
+    if destinatarios or cc:
+        dest_html = "<br>".join(f"&#8226;&nbsp; {_esc(d)}" for d in destinatarios) or "Sin destinatarios"
+        cc_html = "<br>".join(f"&#8226;&nbsp; {_esc(c)}" for c in cc) if cc else ""
+        enviado_a_html = (
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            f'style="background-color:#F8FAFC; border:1px solid #EBEEF3; border-radius:10px; margin-top:8px;">'
+            f'<tr><td style="padding:12px 16px; font-family:\'Segoe UI\',Arial,sans-serif; font-size:12.5px; color:#475569;">'
+            f'<b style="color:#1B2430;">Para:</b><br>{dest_html}'
+        )
+        if cc_html:
+            enviado_a_html += (
+                f'<br><br><b style="color:#1B2430;">CC:</b><br>{cc_html}'
+            )
+        enviado_a_html += '</td></tr></table>'
+    else:
+        enviado_a_html = ""
+
+    # Firma del firmante
+    firma_html = ""
+    if firmante:
+        firma_html = (
+            f'<tr><td style="padding:16px 32px 8px 32px;" class="p-mobile">'
+            f'<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:13px; color:#475569; white-space:pre-line;">'
+            f'{_esc(firmante)}</span></td></tr>'
+        )
+
     # Jinja2 solo para escape de expresiones, no para sustituir bloques grandes.
     # Los bloques grandes se inyectan via marcadores __FDS_xxx__ sobre la plantilla.
     env = Environment(
@@ -246,6 +331,9 @@ def render_informe(
         f'<span style="display:inline-block; background-color:rgba(255,255,255,0.16); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px;">\n                    {_esc(_format_fecha_larga(fecha))} &nbsp;&middot;&nbsp; Turno {_esc(turno_etiqueta)}\n                  </span>',
     )
 
+    # 2b. Encabezado azul: casino + titulo del sistema (ahora con nombre real)
+    html_out = _replace_header_branding(html_out, nombre_empresa, departamento, color_corp)
+
     # 3. Meta info (4 columnas): Fecha del informe, Turno, Hora generacion, Enviado por
     html_out = _replace_meta(html_out, fecha, turno_etiqueta, turno_rango, usuario)
 
@@ -263,6 +351,14 @@ def render_informe(
 
     # 8. Observaciones
     html_out = _replace_observaciones(html_out, obs_html)
+
+    # 9. Bloque "Enviado a" (insertado antes del pie del correo)
+    if enviado_a_html:
+        html_out = _inject_enviado_a(html_out, enviado_a_html)
+
+    # 10. Firma del firmante (antes del pie)
+    if firma_html:
+        html_out = _inject_firma(html_out, firma_html)
 
     return html_out
 
@@ -381,6 +477,81 @@ def _replace_observaciones(html: str, obs_html: str) -> str:
         re.DOTALL,
     )
     return patron.sub(obs_html + "</td>", html, count=1)
+
+
+def _replace_header_branding(
+    html: str, nombre_empresa: str, departamento: str, color_corporativo: str
+) -> str:
+    """Reemplaza el badge y el texto del casino en el header azul.
+
+    El template tiene hardcoded:
+      <span ...>OC</span>  (badge)
+      Casino Ovalle · Depto. Tecnico y Sistemas  (subtitulo)
+      Informe Diario de Maquinas Fuera de Servicio  (titulo)
+
+    Cambiamos el badge a las iniciales del casino y actualizamos el
+    subtitulo con el nombre real del config. El titulo se mantiene
+    porque describe el contenido del correo.
+    """
+    # Iniciales para el badge (max 2 letras)
+    iniciales = "".join(p[0].upper() for p in nombre_empresa.split()[:2] if p) or "CO"
+
+    # Reemplazar el badge "OC"
+    html = re.sub(
+        r'(<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:13px; font-weight:700; color:#1E5AA8;">)OC(</span>)',
+        rf'\g<1>{_esc(iniciales)}\g<2>',
+        html,
+        count=1,
+    )
+
+    # Reemplazar el subtitulo del header. El template usa "·" (punto medio
+    # Unicode directo) y "Técnico" con tilde directa, NO entidades HTML.
+    patron_subtitulo = re.compile(
+        r'<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:11px; font-weight:600; color:#C7DBF5; letter-spacing:0.5px; text-transform:uppercase;">'
+        r'Casino Ovalle\s*[·\.&middot;]\s*Depto\.?\s*T[eé]cnico y Sistemas'
+        r'</span>',
+        re.DOTALL,
+    )
+    subtitulo_nuevo = (
+        f'<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:11px; '
+        f'font-weight:600; color:#C7DBF5; letter-spacing:0.5px; text-transform:uppercase;">'
+        f'{_esc(nombre_empresa)} &middot; {_esc(departamento)}</span>'
+    )
+    html = patron_subtitulo.sub(subtitulo_nuevo, html, count=1)
+    return html
+
+
+def _inject_enviado_a(html: str, enviado_a_html: str) -> str:
+    """Inyecta el bloque 'Enviado a' justo antes del pie del correo."""
+    patron = re.compile(
+        r'(\s*<!--\s*============\s*PIE DEL CORREO\s*============\s*-->)',
+    )
+    bloque = (
+        f"\n        <!-- ============ ENVIADO A ============ -->\n"
+        f"        <tr><td style=\"background-color:#FFFFFF; padding:0 32px 8px 32px;\" class=\"p-mobile\">\n"
+        f"          <span style=\"font-family:'Segoe UI',Arial,sans-serif; font-size:11px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.5px;\">\n"
+        f"            Distribucion de este informe\n"
+        f"          </span>\n"
+        f"          {enviado_a_html}\n"
+        f"        </td></tr>"
+        r"\1"
+    )
+    return patron.sub(bloque, html, count=1)
+
+
+def _inject_firma(html: str, firma_html: str) -> str:
+    """Inyecta el bloque de firma antes del pie del correo."""
+    patron = re.compile(
+        r'(\s*<!--\s*============\s*PIE DEL CORREO\s*============\s*-->)',
+    )
+    bloque = (
+        f"\n        <!-- ============ FIRMA ============ -->"
+        f"        <tr><td style=\"background-color:#FFFFFF; padding:8px 32px 16px 32px;\" class=\"p-mobile\">"
+        f"          {firma_html}"
+        f"        </td></tr>"
+        r"\1"
+    )
+    return patron.sub(bloque, html, count=1)
 
 
 __all__ = ("render_informe",)

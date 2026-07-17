@@ -233,8 +233,35 @@ def enviar_informe_turno(
     observaciones: list[str] | None = None,
     tiempo_promedio_min: int | None = None,
     logo_path: str | None = None,
+    empresa: dict | None = None,
+    firmante: str | None = None,
 ) -> dict[str, Any]:
-    """Helper que une render + envio. Usado por el controller."""
+    """Helper que une render + envio. Usado por el controller.
+
+    Por defecto trae ``empresa``, ``destinatarios``, ``cc`` y ``firmante``
+    del ``config.json`` si no se pasan explicitamente. Asi el controller
+    no tiene que recordar de pasarlos en cada llamada.
+    """
+    # Defaults desde config si no se pasaron
+    if empresa is None or destinatarios is None or cc is None or firmante is None:
+        try:
+            from services import configuracion as svc_cfg
+            cfg = svc_cfg.obtener()
+            if empresa is None:
+                empresa = cfg.get("empresa", {})
+            correo_cfg = cfg.get("correo", {})
+            if destinatarios is None:
+                destinatarios = correo_cfg.get("destinatarios", []) or []
+            if cc is None:
+                cc = correo_cfg.get("cc", []) or []
+            if firmante is None:
+                firmante = correo_cfg.get("firma", "")
+        except Exception:
+            empresa = empresa or {}
+            destinatarios = destinatarios or []
+            cc = cc or []
+            firmante = firmante or ""
+
     html = email_renderer.render_informe(
         fecha=resumen.fecha,
         turno_etiqueta=turno_etiqueta,
@@ -244,6 +271,10 @@ def enviar_informe_turno(
         pendientes=pendientes,
         observaciones=observaciones,
         tiempo_promedio_min=tiempo_promedio_min,
+        empresa=empresa,
+        destinatarios=destinatarios,
+        cc=cc,
+        firmante=firmante,
     )
     asunto = armar_asunto(asunto_template, fecha=resumen.fecha, turno=turno_etiqueta)
     return enviar_informe(
