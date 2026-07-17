@@ -26,8 +26,9 @@ venv/
 ENV/
 env/
 
-# PyInstaller
-*.spec
+# PyInstaller (autogenera *.spec si no se pasa uno custom).
+# El repo tiene app.spec custom: NO se ignora.
+*.spec.bak
 *.manifest
 
 # IDE
