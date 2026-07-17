@@ -8,5 +8,6 @@ from __future__ import annotations
 
 from .incidencia import Incidencia
 from .maquina import Maquina
+from .tecnico import Tecnico
 
-__all__ = ["Maquina", "Incidencia"]
+__all__ = ["Maquina", "Incidencia", "Tecnico"]

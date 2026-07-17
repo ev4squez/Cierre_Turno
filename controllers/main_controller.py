@@ -51,8 +51,29 @@ class MainController:
 
     def start(self) -> None:
         """Carga estado inicial (tecnicos, lista del dia, totales)."""
+        # 1. Migrar tecnicos desde config.json a la DB (la primera vez).
+        #    Es idempotente: si ya estan en la DB, no hace nada.
+        try:
+            from services import tecnicos_db
+            tecnicos_db.migrar_desde_config()
+        except Exception as e:
+            # Si falla la migracion, logueamos pero seguimos
+            print(f"[WARN] migrar tecnicos desde config: {e}")
+
+        # 2. Cargar tecnicos y usuario actual desde la DB
+        try:
+            from services import tecnicos_db
+            tecnicos = tecnicos_db.listar(incluir_inactivos=False)
+            self.win.set_tecnicos([t["nombre"] for t in tecnicos])
+        except Exception as e:
+            print(f"[WARN] cargar tecnicos de DB: {e}")
+            cfg = svc_cfg.obtener()
+            self.win.set_tecnicos(cfg.get("tecnicos", []))
+
+        # 3. Refrescar el chip del topbar con el usuario actual de la DB
+        self.refrescar_topbar_usuario()
+
         cfg = svc_cfg.obtener()
-        self.win.set_tecnicos(cfg.get("tecnicos", []))
         self._turno_actual = self._detectar_turno(cfg)
         # Carga lista del turno en curso
         self.refrescar_lista_turno()
@@ -63,6 +84,24 @@ class MainController:
         # Setea el form en estado "sin maquina"
         self.win.set_form_machine(None)
         self.win.refresh_header()
+
+    def refrescar_topbar_usuario(self) -> None:
+        """Recarga el nombre y rol del topbar desde la DB.
+
+        Llamado en el startup y cada vez que el usuario modifica la lista
+        de tecnicos en Settings (para que el chip refleje el cambio
+        en vivo, sin reiniciar la app).
+        """
+        try:
+            from services import tecnicos_db
+            actual = tecnicos_db.obtener_usuario_actual()
+            if actual is not None:
+                self.win.set_topbar_usuario(
+                    nombre=actual["nombre"],
+                    rol="Operador de sala",
+                )
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     # Handlers de signals
@@ -90,7 +129,7 @@ class MainController:
             return
         try:
             cfg = svc_cfg.obtener()
-            usuario = cfg.get("usuario_actual", "Operador")
+            usuario = self._obtener_usuario_actual()
             inc = svc_inc.registrar(
                 numero_maquina=self._selected_maquina["numero_maquina"],
                 problema=data["problema"],
@@ -212,7 +251,7 @@ class MainController:
 
             resultado = svc_outlook.enviar_informe_turno(
                 resumen=resumen,
-                usuario=cfg.get("usuario_actual", "Operador"),
+                usuario=self._obtener_usuario_actual(),
                 turno_etiqueta=etiqueta,
                 turno_rango=rango,
                 destinatarios=destinatarios,
@@ -248,9 +287,15 @@ class MainController:
         from ui.settings_dialog import SettingsDialog
         dlg = SettingsDialog(self.win)
         def _on_changed() -> None:
-            # Refrescar tecnicos en el form principal por si modificaron la lista
-            cfg = svc_cfg.obtener()
-            self.win.set_tecnicos(cfg.get("tecnicos", []))
+            # Refrescar tecnicos desde la DB
+            try:
+                from services import tecnicos_db
+                tecnicos = tecnicos_db.listar(incluir_inactivos=False)
+                self.win.set_tecnicos([t["nombre"] for t in tecnicos])
+            except Exception as e:
+                print(f"[WARN] refrescar tecnicos: {e}")
+            # Refrescar el topbar (puede haber cambiado el operador actual)
+            self.refrescar_topbar_usuario()
             # Refrescar lista del turno y stats por si modificaron maquinas
             self.refrescar_lista_turno()
             self._refrescar_quick_stats()
@@ -337,6 +382,21 @@ class MainController:
     # Helpers
     # ------------------------------------------------------------------
 
+    def _obtener_usuario_actual(self) -> str:
+        """Devuelve el nombre del tecnico marcado como usuario actual.
+
+        Lee de la DB. Si no hay ninguno marcado, usa el del config o
+        'Operador' como fallback.
+        """
+        try:
+            from services import tecnicos_db
+            actual = tecnicos_db.obtener_usuario_actual()
+            if actual is not None:
+                return actual["nombre"]
+        except Exception:
+            pass
+        cfg = svc_cfg.obtener()
+        return cfg.get("usuario_actual", "Operador")
     def _detectar_turno(self, cfg: dict) -> str:
         h = datetime.now().hour
         if 8 <= h < 14:

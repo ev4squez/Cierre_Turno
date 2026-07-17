@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         cfg = load_config()
         self._empresa = cfg["empresa"]["nombre"]
         self._sistema = cfg["empresa"]["departamento"]
-        self._usuario = cfg.get("usuario_actual", "Operador")
+        self._usuario = ""  # se completa con set_topbar_usuario() desde el controller
         self._rol = "Operador de sala"
 
         self._build_ui()
@@ -184,6 +184,15 @@ class MainWindow(QMainWindow):
 
     def set_tecnicos(self, tecnicos: list[str]) -> None:
         self._form.set_tecnicos(tecnicos)
+
+    def set_topbar_usuario(self, nombre: str, rol: str) -> None:
+        """Actualiza el chip de usuario del topbar (avatar + nombre + rol).
+
+        Llamado por el controller cuando detecta cambios en la DB
+        (ej. el operador cambio su nombre en Settings). Asi el topbar
+        refleja el cambio sin tener que reiniciar la app.
+        """
+        self._topbar.set_usuario(nombre, rol)
 
     def set_form_machine(self, m: dict | None) -> None:
         self._form.set_machine(m)

@@ -102,79 +102,20 @@ def validar_maquina(payload: dict, parcial: bool = False) -> dict:
 # wrapper sobre services.configuracion para darle una API uniforme.
 
 
-def listar_tecnicos() -> list[str]:
-    """Devuelve la lista actual de tecnicos."""
-    from services import configuracion as svc_cfg
-    return list(svc_cfg.obtener().get("tecnicos", []))
-
-
-def agregar_tecnico(nombre: str) -> list[str]:
-    """Agrega un tecnico nuevo. Devuelve la lista actualizada.
-
-    Lanza ``ValueError`` si el nombre esta vacio o ya existe.
-    """
-    nombre = (nombre or "").strip()
-    if not nombre:
-        raise ValueError("El nombre no puede estar vacio")
-    from services import configuracion as svc_cfg
-    cfg = svc_cfg.obtener()
-    actual = list(cfg.get("tecnicos", []))
-    if any(t.strip().lower() == nombre.lower() for t in actual):
-        raise ValueError(f"Ya existe el tecnico '{nombre}'")
-    actual.append(nombre)
-    cfg["tecnicos"] = actual
-    svc_cfg.guardar(cfg)
-    return actual
-
-
-def eliminar_tecnico(nombre: str) -> list[str]:
-    """Elimina un tecnico de la lista. Devuelve la lista actualizada."""
-    nombre = (nombre or "").strip()
-    if not nombre:
-        raise ValueError("El nombre no puede estar vacio")
-    from services import configuracion as svc_cfg
-    cfg = svc_cfg.obtener()
-    actual = list(cfg.get("tecnicos", []))
-    nuevos = [t for t in actual if t.strip().lower() != nombre.lower()]
-    if len(nuevos) == len(actual):
-        raise ValueError(f"No se encontro el tecnico '{nombre}'")
-    cfg["tecnicos"] = nuevos
-    svc_cfg.guardar(cfg)
-    return nuevos
-
-
-def renombrar_tecnico(viejo: str, nuevo: str) -> list[str]:
-    """Renombra un tecnico. Devuelve la lista actualizada."""
-    viejo = (viejo or "").strip()
-    nuevo = (nuevo or "").strip()
-    if not viejo or not nuevo:
-        raise ValueError("Nombres no pueden estar vacios")
-    from services import configuracion as svc_cfg
-    cfg = svc_cfg.obtener()
-    actual = list(cfg.get("tecnicos", []))
-    nuevos = []
-    encontrado = False
-    for t in actual:
-        if t.strip().lower() == viejo.lower():
-            nuevos.append(nuevo)
-            encontrado = True
-        else:
-            nuevos.append(t)
-    if not encontrado:
-        raise ValueError(f"No se encontro el tecnico '{viejo}'")
-    if any(t.strip().lower() == nuevo.lower() for t in nuevos if t != nuevo):
-        raise ValueError(f"Ya existe otro tecnico con nombre '{nuevo}'")
-    cfg["tecnicos"] = nuevos
-    svc_cfg.guardar(cfg)
-    return nuevos
+# Funciones de tecnicos delegadas a services.tecnicos_db
+# Mantenemos los nombres y firmas para retrocompatibilidad con tests
+# y callers existentes.
+from services.tecnicos_db import (  # noqa: F401
+    listar_tecnicos,
+    agregar_tecnico,
+    eliminar_tecnico,
+    renombrar_tecnico,
+)
 
 
 __all__ = (
     "listar_todas",
     "reactivar_maquina",
     "validar_maquina",
-    "listar_tecnicos",
-    "agregar_tecnico",
-    "eliminar_tecnico",
-    "renombrar_tecnico",
+    # tecnicos: re-exportados desde services.tecnicos_db
 )
