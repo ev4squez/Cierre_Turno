@@ -127,6 +127,9 @@ class MainWindow(QMainWindow):
 
     def _on_machine_selected(self, m: dict) -> None:
         """Slot interno: propaga la seleccion al panel central y al form."""
+        if not isinstance(m, dict) or "numero_maquina" not in m:
+            # Si llega algo raro, ignorar en vez de romper la UI
+            return
         self.show_machine(m)
         self.set_form_machine(m)
         # Tambien emite al exterior por si el controller quiere hacer algo mas

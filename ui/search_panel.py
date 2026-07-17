@@ -35,8 +35,8 @@ class SearchPanel(QFrame):
         super().__init__(parent)
         self.setObjectName("panelSearch")
         self.setProperty("class", "panel")
-        self.setMinimumWidth(320)
-        self.setMaximumWidth(360)
+        self.setMinimumWidth(420)
+        self.setMaximumWidth(520)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self._result_widgets: list[QFrame] = []
@@ -230,13 +230,14 @@ class SearchPanel(QFrame):
             w.setProperty("active", "false")
             w.style().unpolish(w)
             w.style().polish(w)
-        sender_widget = self.sender() if hasattr(self, "sender") else None
         # Encontrar el widget de la maquina seleccionada y marcarlo
         for w in self._result_widgets:
             if w.property("maquina") is m:
                 w.setProperty("active", "true")
                 w.style().unpolish(w)
                 w.style().polish(w)
+        # Limpiar el focus del search box para que las flechas funcionen
+        self._search.clearFocus()
         self.machineSelected.emit(m)
 
     def _on_text_changed(self, text: str) -> None:
