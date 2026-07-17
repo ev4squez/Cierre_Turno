@@ -277,6 +277,20 @@ def tiempo_promedio_resolucion_min(registros: list[dict]) -> int | None:
     return int(sum(tiempos) / len(tiempos))
 
 
+def total_operativas_catalogo(solo_activas: bool = True) -> int:
+    """Cuenta maquinas del catalogo que tienen estado='Operativa'.
+
+    Util para el informe: muestra cuantas maquinas estan operativas
+    en el casino ahora mismo.
+    """
+    from services import admin as svc_admin
+    count = 0
+    for m in svc_admin.listar_todas(incluir_inactivas=not solo_activas):
+        if m.get("estado") == "Operativa":
+            count += 1
+    return count
+
+
 def total_maquinas_catalogo(solo_activas: bool = True) -> int:
     """Cuenta el total de maquinas en el catalogo.
 

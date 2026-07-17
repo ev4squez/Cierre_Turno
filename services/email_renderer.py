@@ -386,7 +386,31 @@ def render_informe(
     html_out = _replace_meta(html_out, fecha, turno_etiqueta, turno_rango, usuario)
 
     # 4. Tarjetas de resumen (6 numeros grandes)
-    html_out = _replace_summary_cards(html_out, total, operativas, fds, pendientes_rep, soporte, tiempo_txt)
+    # Total del catalogo y operativas (si no se pasan, los calculamos aca)
+    if total_maquinas_catalogo is None:
+        try:
+            from services.incidencias import total_maquinas_catalogo as _tmc
+            total_maquinas_catalogo = _tmc(solo_activas=True)
+        except Exception:
+            total_maquinas_catalogo = 0
+    if total_operativas_catalogo is None:
+        try:
+            from services.incidencias import total_operativas_catalogo as _toc
+            total_operativas_catalogo = _toc(solo_activas=True)
+        except Exception:
+            total_operativas_catalogo = 0
+
+    html_out = _replace_summary_cards(
+        html_out,
+        total=total,
+        operativas_turno=operativas,
+        fds=fds,
+        pendientes=pendientes_rep,
+        soporte=soporte,
+        tiempo_txt=tiempo_txt,
+        total_maquinas_catalogo=total_maquinas_catalogo or 0,
+        total_operativas_catalogo=total_operativas_catalogo,
+    )
 
     # 5. Tabla principal
     html_out = _replace_tabla_principal(html_out, filas_tabla)
@@ -438,39 +462,28 @@ def _replace_meta(html: str, fecha: date, etiqueta: str, rango: str, usuario: st
     return patron.sub(_sub, html)
 
 
-def _replace_summary_cards(html: str, total: int, operativas: int, fds: int,
-                           pendientes: int, soporte: int, tiempo_txt: str) -> str:
-    """Reemplaza los 6 numeros grandes de las tarjetas."""
-    patron = re.compile(
-        r'(<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:22px; font-weight:800; color:#1E5AA8;">)([^<]+)(</span>)'
-    )
-    esperados = [
-        (str(total), "#1E5AA8"),
-        (str(operativas), "#16A34A"),
-        (str(fds), "#DC2626"),
-        (str(pendientes), "#D97706"),
-        (str(soporte), "#1E5AA8"),
-    ]
-    # Para el tiempo promedio el patron es ligeramente distinto (con <span> anidado)
-    patron_tiempo = re.compile(
-        r'(<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:22px; font-weight:800; color:#1B2430;">)([^<]+)(<span style="font-size:13px; font-weight:700;">)([^<]+)(</span></span>)'
-    )
-    valores = list(esperados) + [(tiempo_txt, "#1B2430")]
-    idx = {"i": 0}
+def _replace_summary_cards(html: str, *, total: int, operativas_turno: int,
+                           fds: int, pendientes: int, soporte: int,
+                           tiempo_txt: str, total_maquinas_catalogo: int,
+                           total_operativas_catalogo: int) -> str:
+    """Reemplaza los 8 marcadores __FDS_XXX__ de las tarjetas.
 
-    def _sub(m: re.Match) -> str:
-        i = idx["i"]
-        idx["i"] += 1
-        if i >= len(valores):
-            return m.group(0)
-        return m.group(0).replace(m.group(2), valores[i][0]).replace(m.group(1), m.group(1).replace("#1E5AA8", valores[i][1]))
-
-    html = patron.sub(_sub, html)
-    # Tiempo promedio: el color es #1B2430, ya esta bien; solo sustituir el numero.
-    html = patron_tiempo.sub(
-        lambda m: m.group(1) + tiempo_txt + m.group(3) + m.group(4) + m.group(5),
-        html,
-    )
+    Layout: 2 filas x 4 tarjetas.
+      Fila 1: Total maquinas, Operativas catalogo, Incidencias, Reparadas
+      Fila 2: FDS, Pendientes, Soporte, Tiempo prom
+    """
+    reemplazos = {
+        "__FDS_TOTAL_MAQUINAS__": str(total_maquinas_catalogo),
+        "__FDS_TOTAL_OPERATIVAS__": str(total_operativas_catalogo),
+        "__FDS_TOTAL__": str(total),
+        "__FDS_OPERATIVAS__": str(operativas_turno),
+        "__FDS_FDS__": str(fds),
+        "__FDS_PENDIENTES__": str(pendientes),
+        "__FDS_SOPORTE__": str(soporte),
+        "__FDS_TIEMPO_PROMEDIO__": tiempo_txt,
+    }
+    for marcador, valor in reemplazos.items():
+        html = html.replace(marcador, valor, 1)
     return html
 
 

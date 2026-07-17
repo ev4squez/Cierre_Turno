@@ -128,59 +128,75 @@
           <td style="padding: 10px 26px 20px 26px;" class="p-mobile">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <!-- Fila 1 -->
-                <td width="33.33%" class="card-cell" style="padding:6px;">
+                <!-- Tarjetas del resumen general (inyectadas en runtime) -->
+                <!-- ================== FILA 1 ================== -->
+                <td width="25%" class="card-cell" style="padding:6px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F4F8; border-radius:10px; border:1px solid #E1E6ED;">
+                    <tr><td style="padding:14px 16px;">
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1B2430;">__FDS_TOTAL_MAQUINAS__</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#64748B;">Total m&aacute;quinas (cat&aacute;logo)</span>
+                    </td></tr>
+                  </table>
+                </td>
+                <td width="25%" class="card-cell" style="padding:6px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#E7F7EC; border-radius:10px;">
+                    <tr><td style="padding:14px 16px;">
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#16A34A;">__FDS_TOTAL_OPERATIVAS__</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#256B3F;">Operativas en cat&aacute;logo</span>
+                    </td></tr>
+                  </table>
+                </td>
+                <td width="25%" class="card-cell" style="padding:6px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EAF1FB; border-radius:10px;">
                     <tr><td style="padding:14px 16px;">
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1E5AA8;">6</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1E5AA8;">__FDS_TOTAL__</span><br>
                       <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#3B577C;">Incidencias registradas</span>
                     </td></tr>
                   </table>
                 </td>
-                <td width="33.33%" class="card-cell" style="padding:6px;">
+                <td width="25%" class="card-cell" style="padding:6px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#E7F7EC; border-radius:10px;">
                     <tr><td style="padding:14px 16px;">
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#16A34A;">3</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#16A34A;">__FDS_OPERATIVAS__</span><br>
                       <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#256B3F;">Reparadas en el turno</span>
-                    </td></tr>
-                  </table>
-                </td>
-                <td width="33.33%" class="card-cell" style="padding:6px;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FDECEC; border-radius:10px;">
-                    <tr><td style="padding:14px 16px;">
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#DC2626;">2</span><br>
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#8A2A2A;">Continúan Fuera de Servicio</span>
                     </td></tr>
                   </table>
                 </td>
               </tr>
               <tr>
-                <!-- Fila 2 -->
-                <td width="33.33%" class="card-cell" style="padding:6px;">
+                <!-- ================== FILA 2 ================== -->
+                <td width="25%" class="card-cell" style="padding:6px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FDECEC; border-radius:10px;">
+                    <tr><td style="padding:14px 16px;">
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#DC2626;">__FDS_FDS__</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#8A2A2A;">Contin&uacute;an Fuera de Servicio</span>
+                    </td></tr>
+                  </table>
+                </td>
+                <td width="25%" class="card-cell" style="padding:6px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FDF3E4; border-radius:10px;">
                     <tr><td style="padding:14px 16px;">
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#D97706;">1</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#D97706;">__FDS_PENDIENTES__</span><br>
                       <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#8A5A12;">Pendientes de repuesto</span>
                     </td></tr>
                   </table>
                 </td>
-                <td width="33.33%" class="card-cell" style="padding:6px;">
+                <td width="25%" class="card-cell" style="padding:6px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EAF1FB; border-radius:10px;">
                     <tr><td style="padding:14px 16px;">
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1E5AA8;">1</span><br>
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#3B577C;">Derivadas a serv. técnico</span>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1E5AA8;">__FDS_SOPORTE__</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#3B577C;">Derivadas a serv. t&eacute;cnico</span>
                     </td></tr>
                   </table>
                 </td>
-                <td width="33.33%" class="card-cell" style="padding:6px;">
+                <td width="25%" class="card-cell" style="padding:6px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F1F4F8; border-radius:10px; border:1px solid #E1E6ED;">
                     <tr><td style="padding:14px 16px;">
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1B2430;">38<span style="font-size:13px; font-weight:700;">&nbsp;min</span></span><br>
-                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#64748B;">Tiempo prom. de reparación</span>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:22px; font-weight:800; color:#1B2430;">__FDS_TIEMPO_PROMEDIO__</span><br>
+                      <span style="font-family:'Segoe UI',Arial,sans-serif; font-size:11.5px; font-weight:600; color:#64748B;">Tiempo prom. de reparaci&oacute;n</span>
                     </td></tr>
                   </table>
                 </td>
-              </tr>
             </table>
           </td>
         </tr>
