@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sistema de Registro de Máquinas Fuera de Servicio</title>
+<style>
+  :root{
+    --bg-app: #EEF1F6;
+    --panel: #FFFFFF;
+    --border: #E1E6ED;
+    --border-soft: #EBEEF3;
+    --text-main: #1B2430;
+    --text-sub: #64748B;
+    --text-mute: #94A3B8;
+    --blue: #1E5AA8;
+    --blue-dark: #164788;
+    --blue-tint: #EAF1FB;
+    --blue-tint-hover: #DCE9FA;
+    --green: #16A34A;
+    --green-tint: #E7F7EC;
+    --red: #DC2626;
+    --red-tint: #FDECEC;
+    --amber: #D97706;
+    --amber-tint: #FDF3E4;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-card: 0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06);
+    --shadow-pop: 0 8px 24px rgba(16,24,40,0.14);
+  }
+
+  *{ box-sizing: border-box; }
+  html, body{
+    margin:0; padding:0; height:100%;
+    background: var(--bg-app);
+    color: var(--text-main);
+    font-family: "Segoe UI", "Segoe UI Semibold", Arial, sans-serif;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app{
+    width: 1400px;
+    height: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-app);
+    border: 1px solid #D8DEE8;
+    overflow: hidden;
+  }
+
+  /* ===================== TOP BAR ===================== */
+  .topbar{
+    height: 60px;
+    min-height: 60px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display:flex;
+    align-items:center;
+    padding: 0 20px;
+    gap: 16px;
+  }
+  .logo{
+    width: 36px; height:36px;
+    border-radius: 9px;
+    background: linear-gradient(155deg, var(--blue), var(--blue-dark));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:700; font-size:14px; letter-spacing:.5px;
+    flex-shrink:0;
+  }
+  .brand{ display:flex; flex-direction:column; line-height:1.15; margin-right: 10px;}
+  .brand .name{ font-size:11px; color: var(--text-mute); font-weight:600; letter-spacing:.4px; text-transform:uppercase;}
+  .brand .system{ font-size:15px; font-weight:600; color: var(--text-main);}
+  .topbar .divider{ width:1px; height:28px; background: var(--border); }
+  .topbar-spacer{ flex:1; }
+  .top-info{
+    display:flex; align-items:center; gap: 18px; margin-right: 6px;
+  }
+  .info-chip{
+    display:flex; align-items:center; gap:8px;
+    font-size:13px; color: var(--text-sub);
+  }
+  .info-chip .dot{ width:6px; height:6px; border-radius:50%; background: var(--green); }
+  .user-chip{
+    display:flex; align-items:center; gap:9px;
+    padding: 6px 10px 6px 6px;
+    border-radius: 999px;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+  }
+  .avatar{
+    width:26px; height:26px; border-radius:50%;
+    background: var(--blue-tint); color: var(--blue);
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700;
+  }
+  .user-chip .u-name{ font-size:13px; font-weight:600; color: var(--text-main);}
+  .user-chip .u-role{ font-size:11px; color: var(--text-mute);}
+
+  .btn{
+    border:none; cursor:pointer; font-family:inherit;
+    display:inline-flex; align-items:center; gap:8px;
+    border-radius: var(--radius-sm);
+    font-weight:600;
+    transition: background .12s ease, box-shadow .12s ease, transform .05s ease;
+  }
+  .btn:active{ transform: translateY(1px); }
+  .btn-icon-only{
+    width:34px; height:34px; justify-content:center;
+    background: transparent; border:1px solid var(--border); color: var(--text-sub);
+  }
+  .btn-icon-only:hover{ background: var(--bg-app); }
+  .btn-ghost{
+    background: transparent; color: var(--text-sub); padding:8px 12px; border:1px solid var(--border);
+  }
+  .btn-ghost:hover{ background: var(--bg-app); }
+  .btn-danger-ghost{
+    background: transparent; color: var(--red); padding:8px 12px; border:1px solid #F3D3D3;
+  }
+  .btn-danger-ghost:hover{ background: var(--red-tint); }
+
+  /* ===================== MAIN LAYOUT ===================== */
+  .main{
+    flex:1;
+    display:flex;
+    gap:16px;
+    padding: 16px;
+    min-height:0;
+  }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    display:flex; flex-direction:column;
+    min-height:0;
+  }
+  .panel-head{
+    padding: 16px 18px 12px 18px;
+    border-bottom: 1px solid var(--border-soft);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel-title{
+    font-size:14px; font-weight:700; color: var(--text-main);
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel-title .icon{
+    width:20px;height:20px; display:flex; align-items:center;justify-content:center;
+    color: var(--blue);
+  }
+  .panel-body{ padding: 16px 18px; overflow:auto; flex:1; min-height:0; }
+
+  /* ---------- LEFT: search panel ---------- */
+  .panel-search{ width: 320px; flex-shrink:0; }
+  .search-box{
+    position:relative;
+  }
+  .search-input-wrap{
+    position:relative;
+    display:flex; align-items:center;
+  }
+  .search-input-wrap svg{ position:absolute; left:14px; color: var(--text-mute); }
+  .search-input{
+    width:100%;
+    padding: 14px 14px 14px 42px;
+    font-size:15px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--blue);
+    outline:none;
+    background: var(--panel);
+    color: var(--text-main);
+    box-shadow: 0 0 0 4px var(--blue-tint);
+  }
+  .search-input::placeholder{ color: var(--text-mute); font-weight:400; }
+  .search-hint{
+    font-size:12px; color: var(--text-mute); margin-top:8px; padding-left:2px;
+  }
+
+  .search-results{
+    margin-top:14px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .search-results .label{
+    font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.5px; margin: 4px 2px 2px 2px;
+  }
+  .result-item{
+    display:flex; align-items:center; gap:12px;
+    padding: 10px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    cursor:pointer;
+  }
+  .result-item:hover{ background: var(--bg-app); }
+  .result-item.active{ background: var(--blue-tint-hover); border-color:#C7DBF5; }
+  .result-num{
+    width:44px; height:36px; border-radius:8px;
+    background: var(--panel); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:12.5px; color: var(--blue); flex-shrink:0;
+  }
+  .result-item.active .result-num{ background:#fff; }
+  .result-text{ display:flex; flex-direction:column; min-width:0; }
+  .result-text .r-title{ font-size:13px; font-weight:600; color: var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .result-text .r-sub{ font-size:12px; color: var(--text-mute); }
+
+  .quick-stats{
+    margin-top:22px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .quick-stats .qs-title{ font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px;}
+  .qs-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    background: var(--bg-app);
+    font-size:13px;
+  }
+  .qs-row .qs-label{ color: var(--text-sub); display:flex; align-items:center; gap:8px;}
+  .qs-row .qs-value{ font-weight:700; color: var(--text-main); }
+  .tag-dot{ width:8px; height:8px; border-radius:50%; }
+
+  /* ---------- CENTER: machine info ---------- */
+  .panel-center{ flex:1.15; }
+  .machine-header{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin-bottom:18px;
+  }
+  .machine-id{
+    display:flex; align-items:center; gap:14px;
+  }
+  .machine-id .big-num{
+    font-size: 26px; font-weight:800; color: var(--text-main); letter-spacing:.3px;
+  }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:7px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size:12.5px; font-weight:700;
+    background: var(--amber-tint); color: var(--amber);
+  }
+  .status-pill.ok{ background: var(--green-tint); color: var(--green); }
+  .status-pill .dot{ width:7px; height:7px; border-radius:50%; background: currentColor; }
+
+  .info-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .field{
+    background: var(--bg-app);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px;
+  }
+  .field .f-label{
+    font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;
+  }
+  .field .f-value{ font-size:14.5px; font-weight:600; color: var(--text-main); }
+
+  .machine-photo-row{
+    margin-top:20px;
+    display:flex; gap:12px; align-items:center;
+    padding: 14px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-mute);
+    font-size:12.5px;
+  }
+  .thumb{
+    width:56px;height:56px;border-radius:10px;background:var(--bg-app);
+    display:flex;align-items:center;justify-content:center;color:var(--text-mute);flex-shrink:0;
+    border:1px solid var(--border);
+  }
+
+  .history-mini{
+    margin-top:22px;
+  }
+  .history-mini .h-title{ font-size:12px; font-weight:700; color: var(--text-sub); margin-bottom:10px; }
+  .history-line{
+    display:flex; align-items:center; gap:10px; padding:8px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-size:12.5px; color: var(--text-sub);
+  }
+  .history-line:last-child{ border-bottom:none; }
+  .history-line b{ color: var(--text-main); font-weight:600; }
+
+  /* ---------- RIGHT: registration form ---------- */
+  .panel-form{ width: 380px; flex-shrink:0; }
+  .form-row{ margin-bottom:14px; }
+  .form-row label{
+    display:block; font-size:12px; font-weight:700; color: var(--text-sub);
+    margin-bottom:6px;
+  }
+  .form-row .req{ color: var(--red); }
+  .two-col{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+
+  .input, .select, textarea{
+    width:100%;
+    font-family:inherit;
+    font-size:13.5px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text-main);
+    outline:none;
+  }
+  .input:focus, .select:focus, textarea:focus{
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px var(--blue-tint);
+  }
+  .input[disabled]{
+    background: var(--bg-app); color: var(--text-sub);
+  }
+  textarea{ resize:none; }
+  .select{
+    appearance:none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' stroke='%2364748B' stroke-width='1.6' fill='none' fill-rule='evenodd'/></svg>");
+    background-repeat:no-repeat;
+    background-position: right 12px center;
+    padding-right: 30px;
+  }
+
+  .form-actions{
+    margin-top: 18px;
+    display:flex; gap:10px;
+  }
+  .btn-primary{
+    flex:1;
+    background: var(--blue);
+    color:#fff;
+    padding: 12px 16px;
+    justify-content:center;
+    font-size:14px;
+    box-shadow: 0 1px 2px rgba(30,90,168,0.25);
+  }
+  .btn-primary:hover{ background: var(--blue-dark); }
+  .btn-secondary{
+    background: var(--panel);
+    color: var(--text-sub);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+  }
+  .btn-secondary:hover{ background: var(--bg-app); }
+
+  /* ===================== BOTTOM TABLE ===================== */
+  .bottom-panel{
+    margin: 0 16px 16px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    height: 260px;
+    flex-shrink:0;
+    display:flex; flex-direction:column;
+    min-height:0;
+  }
+  .bp-head{
+    padding: 14px 18px; border-bottom:1px solid var(--border-soft);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .bp-head .panel-title{ font-size:14px; }
+  .bp-head .count-badge{
+    font-size:12px; font-weight:700; color: var(--blue); background: var(--blue-tint);
+    padding: 3px 10px; border-radius: 999px; margin-left:8px;
+  }
+  .table-wrap{ overflow-y:auto; flex:1; min-height:0; }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    position: sticky; top:0;
+    background: var(--panel);
+    text-align:left;
+    font-size:11px; font-weight:700; color: var(--text-mute);
+    text-transform:uppercase; letter-spacing:.4px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    z-index:1;
+  }
+  tbody td{
+    padding: 11px 18px;
+    font-size:13px;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  tbody tr:hover td{ background: var(--bg-app); }
+  .badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 10px; border-radius: 999px; font-size:11.5px; font-weight:700;
+  }
+  .badge.pending{ background: var(--amber-tint); color: var(--amber); }
+  .badge.resolved{ background: var(--green-tint); color: var(--green); }
+  .badge.critical{ background: var(--red-tint); color: var(--red); }
+  .row-actions{ display:flex; gap:6px; }
+  .icon-btn{
+    width:28px; height:28px; border-radius:7px;
+    border:1px solid var(--border); background: var(--panel);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    color: var(--text-sub);
+  }
+  .icon-btn:hover{ background: var(--bg-app); }
+  .icon-btn.danger:hover{ background: var(--red-tint); color: var(--red); border-color:#F3D3D3; }
+
+  /* ===================== FOOTER ===================== */
+  .footer{
+    height: 68px; min-height:68px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    display:flex; align-items:center;
+    padding: 0 20px;
+    gap: 28px;
+  }
+  .foot-stat{ display:flex; flex-direction:column; gap:2px; }
+  .foot-stat .fs-label{ font-size:11px; color: var(--text-mute); font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
+  .foot-stat .fs-value{ font-size:17px; font-weight:800; color: var(--text-main); }
+  .foot-stat .fs-value.accent{ color: var(--blue); }
+  .foot-divider{ width:1px; height:32px; background: var(--border); }
+  .footer-spacer{ flex:1; }
+  .btn-report{
+    background: var(--blue);
+    color:#fff;
+    padding: 13px 22px;
+    font-size:14.5px;
+    box-shadow: 0 4px 14px rgba(30,90,168,0.28);
+  }
+  .btn-report:hover{ background: var(--blue-dark); }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background: #CBD5E1; border-radius:8px; }
+  ::-webkit-scrollbar-track{ background: transparent; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== TOP BAR ===================== -->
+  <div class="topbar">
+    <div class="logo">OC</div>
+    <div class="brand">
+      <span class="name">Ovalle Casino Resort</span>
+      <span class="system">Sistema de Registro de Máquinas Fuera de Servicio</span>
+    </div>
+    <div class="divider"></div>
+    <div class="topbar-spacer"></div>
+    <div class="top-info">
+      <div class="info-chip">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Jueves, 16 de julio de 2026
+      </div>
+      <div class="info-chip">
+        <span class="dot"></span>
+        Turno Tarde · 14:00 – 22:00
+      </div>
+    </div>
+    <div class="user-chip">
+      <div class="avatar">EM</div>
+      <div>
+        <div class="u-name">Elvis M.</div>
+        <div class="u-role">Operador de sala</div>
+      </div>
+    </div>
+    <button class="btn btn-icon-only" title="Configuración">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg>
+    </button>
+    <button class="btn btn-danger-ghost">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+      Salir
+    </button>
+  </div>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main">
+
+    <!-- LEFT: Búsqueda -->
+    <div class="panel panel-search">
+      <div class="panel-head">
+        <div class="panel-title">
+          <span class="icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+          </span>
+          Buscar máquina
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="search-box">
+          <div class="search-input-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input class="search-input" type="text" placeholder="Ingrese número de máquina..." value="10">
+          </div>
+          <div class="search-hint">3 coincidencias encontradas</div>
+
+          <div class="search-results">
+            <div class="label">Resultados</div>
+            <div class="result-item active">
+              <div class="result-num">1023</div>
+              <div class="result-text">
+                <span class="r-title">Aristocrat MarsX</span>
+                <span class="r-sub">Isla 05 · Sector Alto</span>
+              </div>
+            </div>
+            <div class="result-item">
+              <div class="result-num">1045</div>
+              <div class="result-text">
+                <span class="r-title">Konami KP3</span>
+                <span class="r-sub">Isla 07 · Sector Alto</span>
+              </div>
+            </div>
+            <div class="result-item">
+              <div class="result-num">2056</div>
+              <div class="result-text">
+                <span class="r-title">IGT PeakSlant</span>
+                <span class="r-sub">Isla 12 · Sector Bajo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-stats">
+          <div class="qs-title">Resumen rápido</div>
+          <div class="qs-row">
+            <span class="qs-label"><span class="tag-dot" style="background:var(--red)"></span>Máquinas FDS activas</span>
+            <span class="qs-value">6</span>
+          </div>
+          <div class="qs-row">
+            <span class="qs-label"><span class="tag-dot" style="background:var(--amber)"></span>Pendientes de revisión</span>
+            <span class="qs-value">2</span>
+          </div>
+          <div class="qs-row">
+            <span class="qs-label"><span class="tag-dot" style="background:var(--green)"></span>Resueltas hoy</span>
+            <span class="qs-value">9</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER: Información de la máquina -->
+    <div class="panel panel-center">
+      <div class="panel-head">
+        <div class="panel-title">
+          <span class="icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18M3 9h18"/></svg>
+          </span>
+          Información de la máquina
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="machine-header">
+          <div class="machine-id">
+            <span class="big-num">N.º 1023</span>
+          </div>
+          <span class="status-pill">
+            <span class="dot"></span> Fuera de Servicio
+          </span>
+        </div>
+
+        <div class="info-grid">
+          <div class="field"><div class="f-label">Número de máquina</div><div class="f-value">1023</div></div>
+          <div class="field"><div class="f-label">Sector</div><div class="f-value">Sector Alto</div></div>
+          <div class="field"><div class="f-label">Isla</div><div class="f-value">Isla 05</div></div>
+          <div class="field"><div class="f-label">Marca</div><div class="f-value">Aristocrat</div></div>
+          <div class="field"><div class="f-label">Modelo</div><div class="f-value">MarsX</div></div>
+          <div class="field"><div class="f-label">Serie</div><div class="f-value">AR-88213-CL</div></div>
+          <div class="field"><div class="f-label">Denominación</div><div class="f-value">$100</div></div>
+          <div class="field"><div class="f-label">Estado actual</div><div class="f-value">Fuera de Servicio</div></div>
+        </div>
+
+        <div class="machine-photo-row">
+          <div class="thumb">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          </div>
+          <div>Sin fotografía asociada · el operador puede adjuntar una imagen de referencia de la incidencia.</div>
+        </div>
+
+        <div class="history-mini">
+          <div class="h-title">Últimas incidencias de esta máquina</div>
+          <div class="history-line"><b>10/07/2026</b>&nbsp;— Falla en lector de billetes · Resuelta</div>
+          <div class="history-line"><b>28/06/2026</b>&nbsp;— Pantalla intermitente · Resuelta</div>
+          <div class="history-line"><b>02/06/2026</b>&nbsp;— Atasco de impresora de tickets · Resuelta</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Registrar Fuera de Servicio -->
+    <div class="panel panel-form">
+      <div class="panel-head">
+        <div class="panel-title">
+          <span class="icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          </span>
+          Registrar Fuera de Servicio
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="two-col">
+          <div class="form-row">
+            <label>Fecha</label>
+            <input class="input" type="text" value="16/07/2026" disabled>
+          </div>
+          <div class="form-row">
+            <label>Hora</label>
+            <input class="input" type="text" value="15:42" disabled>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Técnico responsable <span class="req">*</span></label>
+          <select class="select">
+            <option>Seleccionar técnico...</option>
+            <option selected>Rodrigo Fuentes — Turno Tarde</option>
+            <option>Camila Torres — Turno Tarde</option>
+            <option>Pedro Salinas — Guardia</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Tipo de problema <span class="req">*</span></label>
+          <select class="select">
+            <option>Seleccionar tipo...</option>
+            <option selected>Falla electrónica</option>
+            <option>Falla mecánica</option>
+            <option>Software / Sistema</option>
+            <option>Billetero / TITO</option>
+            <option>Daño de gabinete</option>
+            <option>Otro</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Motivo Fuera de Servicio <span class="req">*</span></label>
+          <textarea rows="2" placeholder="Ej: Reinicio constante de la máquina">Reinicio constante de la máquina</textarea>
+        </div>
+
+        <div class="form-row">
+          <label>Descripción del problema <span class="req">*</span></label>
+          <textarea rows="4" placeholder="Detalle la incidencia observada...">La máquina se reinicia sola cada 3-4 minutos aproximadamente. Se probó reinicio manual sin éxito.</textarea>
+        </div>
+
+        <div class="form-row">
+          <label>Observaciones</label>
+          <textarea rows="2" placeholder="Opcional"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-secondary">Limpiar</button>
+          <button class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+            Guardar Registro
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TABLA INFERIOR ===================== -->
+  <div class="bottom-panel">
+    <div class="bp-head">
+      <div class="panel-title">
+        Incidencias del turno
+        <span class="count-badge">6 registros</span>
+      </div>
+      <button class="btn btn-ghost">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg>
+        Filtrar
+      </button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Máquina</th>
+            <th>Sector</th>
+            <th>Marca</th>
+            <th>Problema</th>
+            <th>Estado</th>
+            <th>Técnico</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>15:42</td><td>1023</td><td>Sector Alto</td><td>Aristocrat</td><td>Falla electrónica</td>
+            <td><span class="badge critical">Fuera de Servicio</span></td><td>R. Fuentes</td>
+            <td><div class="row-actions">
+              <div class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <div class="icon-btn danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></div>
+            </div></td>
+          </tr>
+          <tr>
+            <td>14:58</td><td>2056</td><td>Sector Bajo</td><td>IGT</td><td>Software / Sistema</td>
+            <td><span class="badge pending">En revisión</span></td><td>C. Torres</td>
+            <td><div class="row-actions">
+              <div class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <div class="icon-btn danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></div>
+            </div></td>
+          </tr>
+          <tr>
+            <td>14:30</td><td>1045</td><td>Sector Alto</td><td>Konami</td><td>Billetero / TITO</td>
+            <td><span class="badge resolved">Resuelta</span></td><td>P. Salinas</td>
+            <td><div class="row-actions">
+              <div class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <div class="icon-btn danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></div>
+            </div></td>
+          </tr>
+          <tr>
+            <td>13:47</td><td>3311</td><td>Sector Alto</td><td>Aristocrat</td><td>Daño de gabinete</td>
+            <td><span class="badge critical">Fuera de Servicio</span></td><td>R. Fuentes</td>
+            <td><div class="row-actions">
+              <div class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <div class="icon-btn danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></div>
+            </div></td>
+          </tr>
+          <tr>
+            <td>13:12</td><td>1210</td><td>Sector Bajo</td><td>Konami</td><td>Falla mecánica</td>
+            <td><span class="badge resolved">Resuelta</span></td><td>C. Torres</td>
+            <td><div class="row-actions">
+              <div class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <div class="icon-btn danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></div>
+            </div></td>
+          </tr>
+          <tr>
+            <td>12:55</td><td>4402</td><td>Sector Alto</td><td>IGT</td><td>Software / Sistema</td>
+            <td><span class="badge resolved">Resuelta</span></td><td>P. Salinas</td>
+            <td><div class="row-actions">
+              <div class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+              <div class="icon-btn danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></div>
+            </div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== FOOTER ===================== -->
+  <div class="footer">
+    <div class="foot-stat">
+      <span class="fs-label">Total de incidencias</span>
+      <span class="fs-value">6</span>
+    </div>
+    <div class="foot-divider"></div>
+    <div class="foot-stat">
+      <span class="fs-label">Máquinas registradas</span>
+      <span class="fs-value">6</span>
+    </div>
+    <div class="foot-divider"></div>
+    <div class="foot-stat">
+      <span class="fs-label">Hora de inicio del turno</span>
+      <span class="fs-value">14:00</span>
+    </div>
+    <div class="foot-divider"></div>
+    <div class="foot-stat">
+      <span class="fs-label">Pendientes</span>
+      <span class="fs-value accent">2</span>
+    </div>
+    <div class="footer-spacer"></div>
+    <button class="btn btn-report">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6L12 13 2 6"/><path d="M2 6h20v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>
+      Enviar Informe por Outlook
+    </button>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+# Sistema FDS - Casino Ovalle
+# Entorno objetivo: Windows 10/11 + Python 3.12+
+
+PySide6==6.8.1
+SQLAlchemy==2.0.36
+pandas==2.2.3
+openpyxl==3.1.5
+Jinja2==3.1.4
+pywin32==306; sys_platform == "win32"
+pyinstaller==6.11.0; sys_platform == "win32"

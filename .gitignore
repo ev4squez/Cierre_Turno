@@ -1,0 +1,80 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+
+# PyInstaller
+*.spec
+*.manifest
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Base de datos local (se regenera al ejecutar)
+database/database.db
+database/*.db
+
+# Logs y backups locales
+logs/*.log
+logs/*.txt
+backups/*.db
+backups/*.zip
+
+# Configuracion sensible
+config.local.json
+
+# config.json se regenera al primer arranque con defaults
+# (no commitear para no subir datos del entorno local)
+config.json
+
+# Excel temporal del importador
+*.xlsx.import.tmp
+
+# Build de PyInstaller
+build/
+dist/
+
+# Archivos del usuario (no del proyecto)
+Cierre_Turno_V2.xlsm
+.~lock.*
+
+# Backups de pruebas del smoke test (HTMLs generados automaticamente)
+backups/smoke_informe_*.html
+backups/Informe_*.html
+
+# Log generado por smoke tests
+logs/correo.log
+
+# Lock de uv
+uv.lock
+
+# Metadata de uv build
+sistema_fds.egg-info/
