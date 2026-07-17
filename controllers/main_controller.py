@@ -237,13 +237,20 @@ class MainController:
             )
 
     def on_settings(self) -> None:
-        """Abrir pantalla de configuracion (placeholder por ahora)."""
-        QMessageBox.information(
-            self.win,
-            "Configuracion",
-            "Pantalla de Configuracion - pendiente de implementar.\n"
-            "Edita config.json manualmente mientras tanto.",
-        )
+        """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas, Tecnicos)."""
+        from ui.settings_dialog import SettingsDialog
+        dlg = SettingsDialog(self.win)
+        def _on_changed() -> None:
+            # Refrescar tecnicos en el form principal por si modificaron la lista
+            cfg = svc_cfg.obtener()
+            self.win.set_tecnicos(cfg.get("tecnicos", []))
+            # Refrescar lista del turno y stats por si modificaron maquinas
+            self.refrescar_lista_turno()
+            self._refrescar_quick_stats()
+            self._refrescar_footer()
+            self._toast("Configuracion actualizada")
+        dlg.finished_with_changes.connect(_on_changed)
+        dlg.exec()
 
     def on_import(self) -> None:
         """Abrir el asistente de importacion desde Excel."""

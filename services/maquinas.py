@@ -67,17 +67,19 @@ def buscar_maquinas(query: str, limit: int = 25) -> list[dict]:
         return [m.to_dict() for m in s.scalars(stmt)]
 
 
-def obtener_por_numero(numero_maquina: str) -> dict | None:
-    """Devuelve la maquina activa con ese numero, o ``None``."""
+def obtener_por_numero(numero_maquina: str, incluir_inactivos: bool = False) -> dict | None:
+    """Devuelve la maquina con ese numero, o ``None``.
+
+    Por defecto solo busca maquinas activas (las visibles en el
+    buscador principal). Con ``incluir_inactivos=True`` tambien trae
+    las de la papelera (util para el editor de Settings).
+    """
     if not numero_maquina:
         return None
     with get_session() as s:
-        stmt = (
-            select(Maquina)
-            .where(Maquina.numero_maquina == str(numero_maquina).strip())
-            .where(Maquina.activo.is_(True))
-            .limit(1)
-        )
+        stmt = select(Maquina).where(Maquina.numero_maquina == str(numero_maquina).strip())
+        if not incluir_inactivos:
+            stmt = stmt.where(Maquina.activo.is_(True))
         m = s.scalars(stmt).first()
         return m.to_dict() if m else None
 
@@ -462,31 +464,28 @@ def generar_plantilla(ruta_destino: str, *, hoja: str = "Master") -> str:
 
 def _normalizar(datos: dict, partial: bool = False) -> dict:
     """Limpia y valida un payload de maquina."""
-    if "numero_maquina" not in datos or not str(datos["numero_maquina"]).strip():
-        raise ValueError("numero_maquina es obligatorio")
+    if not partial:
+        if "numero_maquina" not in datos or not str(datos["numero_maquina"]).strip():
+            raise ValueError("numero_maquina es obligatorio")
     out: dict = {
-        "numero_maquina": str(datos["numero_maquina"]).strip(),
         "sector": (datos.get("sector") or "").strip() or None,
         "isla": (datos.get("isla") or "").strip() or None,
+        "codigo_scj": (datos.get("codigo_scj") or "").strip() or None,
         "marca": (datos.get("marca") or "").strip() or None,
         "modelo": (datos.get("modelo") or "").strip() or None,
         "serie": (datos.get("serie") or "").strip() or None,
         "denominacion": (datos.get("denominacion") or "").strip() or None,
     }
     if not partial:
-        estado = (datos.get("estado") or "Operativa").strip()
-        if estado not in ESTADOS_MAQUINA:
-            estado = "Operativa"
-        out["estado"] = estado
-        out["activo"] = bool(datos.get("activo", True))
-    else:
-        if "estado" in datos:
-            estado = (datos["estado"] or "Operativa").strip()
-            if estado not in ESTADOS_MAQUINA:
-                estado = "Operativa"
-            out["estado"] = estado
-        if "activo" in datos:
-            out["activo"] = bool(datos["activo"])
+        out["numero_maquina"] = str(datos["numero_maquina"]).strip()
+    estado = (datos.get("estado") or "Operativa").strip()
+    if estado not in ESTADOS_MAQUINA:
+        estado = "Operativa"
+    out["estado"] = estado
+    if "activo" in datos:
+        out["activo"] = bool(datos["activo"])
+    elif not partial:
+        out["activo"] = True
     return out
 
 
