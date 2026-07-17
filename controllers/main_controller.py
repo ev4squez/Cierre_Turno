@@ -245,6 +245,24 @@ class MainController:
             "Edita config.json manualmente mientras tanto.",
         )
 
+    def on_import(self) -> None:
+        """Abrir el asistente de importacion desde Excel."""
+        from ui.import_dialog import ImportDialog
+        dlg = ImportDialog(self.win)
+        # Cuando termina, refrescar buscador y stats por si se agregaron maquinas
+        def _on_finished(resultado: dict) -> None:
+            insertadas = resultado.get("insertadas", 0)
+            actualizadas = resultado.get("actualizadas", 0)
+            if insertadas > 0 or actualizadas > 0:
+                # Re-poblar resultados del buscador y refrescar maquinas
+                self.refrescar_lista_turno()
+                self._refrescar_quick_stats()
+                self._toast(
+                    f"Importacion: {insertadas} nuevas, {actualizadas} actualizadas"
+                )
+        dlg.finished_with_result.connect(_on_finished)
+        dlg.exec()
+
     def on_logout(self) -> None:
         """Cerrar la app (QApplication.quit)."""
         from PySide6.QtWidgets import QApplication
@@ -320,6 +338,7 @@ class MainController:
         self.win.enviarInformeRequested.connect(self.on_enviar_informe)
         self.win.settingsRequested.connect(self.on_settings)
         self.win.logoutRequested.connect(self.on_logout)
+        self.win.importRequested.connect(self.on_import)
 
 
 __all__ = ("MainController",)

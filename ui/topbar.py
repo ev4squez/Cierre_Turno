@@ -28,6 +28,7 @@ class TopBar(QFrame):
 
     settingsClicked = Signal()
     logoutClicked = Signal()
+    importClicked = Signal()
 
     def __init__(
         self,
@@ -123,6 +124,15 @@ class TopBar(QFrame):
         user_layout.addLayout(user_text)
 
         # Botones
+        btn_import = QPushButton()
+        btn_import.setObjectName("btnIconOnly")
+        btn_import.setIcon(svg("excel", 17))
+        btn_import.setIconSize(btn_import.sizeHint())
+        btn_import.setFixedSize(34, 34)
+        btn_import.setCursor(Qt.PointingHandCursor)
+        btn_import.setToolTip("Importar maquinas desde Excel")
+        btn_import.clicked.connect(self.importClicked.emit)
+
         btn_settings = QPushButton()
         btn_settings.setObjectName("btnIconOnly")
         btn_settings.setIcon(svg("settings", 17))
@@ -150,6 +160,7 @@ class TopBar(QFrame):
         layout.addLayout(top_info)
         layout.addSpacing(6)
         layout.addWidget(user_chip)
+        layout.addWidget(btn_import)
         layout.addWidget(btn_settings)
         layout.addWidget(btn_logout)
 

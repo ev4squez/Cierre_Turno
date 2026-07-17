@@ -12,6 +12,7 @@ Reglas de negocio:
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Iterable
 
 from sqlalchemy import or_, select
@@ -371,6 +372,90 @@ def importar_desde_excel(
 
 
 # ---------------------------------------------------------------------------
+# Plantilla Excel para descarga
+# ---------------------------------------------------------------------------
+
+HEADER_MASTER: tuple[str, ...] = (
+    "Codigo Casino Maquina",
+    "Ubicacion\nMaquina de Azar\nSector",
+    "Ubicacion\nMaquina de Azar\nIsla",
+    "No de Serie\nMaquina de Azar\nGabinete",
+    "Fabricante\nGabinete",
+    "Modelo\nGabinete",
+    "Nombre de Modelo del Programa de Juego",
+    "Estado",
+    "Reparable  Si/NO",
+    "Problema",
+    "Repuesto",
+    "Accion",
+    "Estado Diario",
+)
+
+
+def generar_plantilla(ruta_destino: str, *, hoja: str = "Master") -> str:
+    """Genera un Excel plantilla con los headers de la hoja Master.
+
+    Sirve para que el operador baje un archivo vacio con el formato
+    esperado, lo complete a mano o lo use como base para su catalogo.
+
+    Retorna la ruta absoluta del archivo generado.
+    """
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = hoja
+    # Encabezados en la primera fila
+    for col_idx, header in enumerate(HEADER_MASTER, start=1):
+        ws.cell(row=1, column=col_idx, value=header)
+    # Anchos sugeridos para que se vea bien al abrirlo
+    anchos = {
+        1: 22,  # Codigo Casino
+        2: 22,  # Sector
+        3: 12,  # Isla
+        4: 26,  # Serie
+        5: 36,  # Fabricante
+        6: 26,  # Modelo
+        7: 36,  # Denominacion / Juego
+        8: 22,  # Estado
+        9: 18,  # Reparable
+        10: 38, # Problema
+        11: 22, # Repuesto
+        12: 38, # Accion
+        13: 22, # Estado Diario
+    }
+    for col_idx, ancho in anchos.items():
+        col_letter = ws.cell(row=1, column=col_idx).column_letter
+        ws.column_dimensions[col_letter].width = ancho
+    # Fila 2 vacia con ejemplo comentado para que el operador sepa el formato
+    ejemplo = (
+        5001, "TERRAZA", 213, "HXU8023421",
+        "ARISTOCRAT Technologies, Inc", "HELIX UPRIGHT",
+        "GOLDEN AMULET", "Operativa", "-", "-", "-", "-", "Operativa",
+    )
+    for col_idx, valor in enumerate(ejemplo, start=1):
+        ws.cell(row=2, column=col_idx, value=valor)
+    # Comentario en la celda de Codigo
+    from openpyxl.comments import Comment
+    ws.cell(row=1, column=1).comment = Comment(
+        "Identificador principal del casino. Unico por maquina.\n"
+        "Ejemplos: 5001, 5002, 5238.",
+        "Sistema FDS",
+    )
+    ws.cell(row=1, column=8).comment = Comment(
+        "Estados validos: Operativa, Fuera de Servicio, Pendiente Repuesto, "
+        "Espera Servicio Tecnico, En Observacion.",
+        "Sistema FDS",
+    )
+
+    # Asegurar que la carpeta destino existe
+    dest = Path(ruta_destino).resolve()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(str(dest))
+    return str(dest)
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -450,5 +535,8 @@ __all__: Iterable[str] = (
     "importar_desde_excel",
     "listar_activas",
     "COLUMNAS_EXCEL",
+    "ESTADOS_VALIDOS_EXCEL",
     "_normalizar_estado",
+    "generar_plantilla",
+    "HEADER_MASTER",
 )

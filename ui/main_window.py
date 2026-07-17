@@ -47,6 +47,7 @@ class MainWindow(QMainWindow):
     limpiarForm = Signal()
     editarIncidencia = Signal(int)
     eliminarIncidencia = Signal(int)
+    importRequested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -115,6 +116,7 @@ class MainWindow(QMainWindow):
     def _wire_signals(self) -> None:
         self._topbar.settingsClicked.connect(self.settingsRequested.emit)
         self._topbar.logoutClicked.connect(self._confirm_logout)
+        self._topbar.importClicked.connect(self.importRequested.emit)
         self._footer.enviarInforme.connect(self.enviarInformeRequested.emit)
         self._search_panel.queryChanged.connect(self.searchQueryChanged.emit)
         self._search_panel.machineSelected.connect(self._on_machine_selected)
