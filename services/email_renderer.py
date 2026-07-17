@@ -194,6 +194,7 @@ def render_informe(
     cc: list[str] | None = None,
     firmante: str | None = None,
     total_maquinas_catalogo: int | None = None,
+    total_operativas_catalogo: int | None = None,
 ) -> str:
     """Devuelve el HTML final listo para enviar.
 
@@ -360,18 +361,19 @@ def render_informe(
     )
 
     # 2. Pill de fecha dentro del header azul
-    # Calcular total de maquinas del catalogo (antes del replace del pill)
-    if total_maquinas_catalogo is None:
-        from services.incidencias import total_maquinas_catalogo as _tmc
+    # Resolver total del catalogo una sola vez (no se reasignan parametros)
+    _total_maq_pill = total_maquinas_catalogo
+    if _total_maq_pill is None:
         try:
-            total_maquinas_catalogo = _tmc(solo_activas=True)
+            from services.incidencias import total_maquinas_catalogo as _tmc_pill
+            _total_maq_pill = _tmc_pill(solo_activas=True)
         except Exception:
-            total_maquinas_catalogo = None
+            _total_maq_pill = None
     pill_extra = ""
-    if total_maquinas_catalogo is not None:
+    if _total_maq_pill is not None:
         pill_extra = (
             f'                  <span style="display:inline-block; background-color:rgba(255,255,255,0.10); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px; margin-left:8px;">'
-            f'Catalogo: <span style="font-weight:800;">{total_maquinas_catalogo}</span> maquinas</span>'
+            f'Catalogo: <span style="font-weight:800;">{_total_maq_pill}</span> maquinas</span>'
         )
 
     html_out = html_out.replace(
@@ -385,20 +387,23 @@ def render_informe(
     # 3. Meta info (4 columnas): Fecha del informe, Turno, Hora generacion, Enviado por
     html_out = _replace_meta(html_out, fecha, turno_etiqueta, turno_rango, usuario)
 
-    # 4. Tarjetas de resumen (6 numeros grandes)
-    # Total del catalogo y operativas (si no se pasan, los calculamos aca)
-    if total_maquinas_catalogo is None:
+    # 4. Tarjetas de resumen (8 numeros grandes)
+    # Resolver los totales del catalogo en variables locales (evita
+    # UnboundLocalError por reasignar parametros).
+    _total_maq = total_maquinas_catalogo
+    if _total_maq is None:
         try:
             from services.incidencias import total_maquinas_catalogo as _tmc
-            total_maquinas_catalogo = _tmc(solo_activas=True)
+            _total_maq = _tmc(solo_activas=True)
         except Exception:
-            total_maquinas_catalogo = 0
-    if total_operativas_catalogo is None:
+            _total_maq = 0
+    _total_op = total_operativas_catalogo
+    if _total_op is None:
         try:
             from services.incidencias import total_operativas_catalogo as _toc
-            total_operativas_catalogo = _toc(solo_activas=True)
+            _total_op = _toc(solo_activas=True)
         except Exception:
-            total_operativas_catalogo = 0
+            _total_op = 0
 
     html_out = _replace_summary_cards(
         html_out,
@@ -408,8 +413,8 @@ def render_informe(
         pendientes=pendientes_rep,
         soporte=soporte,
         tiempo_txt=tiempo_txt,
-        total_maquinas_catalogo=total_maquinas_catalogo or 0,
-        total_operativas_catalogo=total_operativas_catalogo,
+        total_maquinas_catalogo=_total_maq or 0,
+        total_operativas_catalogo=_total_op,
     )
 
     # 5. Tabla principal
