@@ -99,6 +99,30 @@ def _badge_estado(estado: str) -> str:
     )
 
 
+def _enriquecer_registros(registros: list[dict]) -> list[dict]:
+    """Si los registros no tienen sector/marca/modelo, los cruza con la DB.
+
+    Asi el renderer no depende de que el controller haya enriquecido
+    previamente. Si la DB no tiene la maquina, deja los campos vacios.
+    """
+    campos_a_enriquecer = ("sector", "isla", "marca", "modelo", "denominacion")
+    for r in registros:
+        if any(r.get(c) for c in campos_a_enriquecer):
+            continue
+        numero = r.get("numero_maquina")
+        if not numero:
+            continue
+        try:
+            from services import maquinas as svc_maq
+            m = svc_maq.obtener_por_numero(str(numero))
+            if m:
+                for c in campos_a_enriquecer:
+                    r[c] = m.get(c, "")
+        except Exception:
+            pass
+    return registros
+
+
 def _build_fila_tabla(r: dict, idx: int) -> str:
     """Renderiza una fila de la tabla principal del informe.
 
@@ -256,8 +280,13 @@ def render_informe(
         tiempo_promedio_min = tiempo_promedio_resolucion_min(registros)
     tiempo_txt = f"{tiempo_promedio_min} min" if tiempo_promedio_min is not None else "N/D"
 
+    # Enriquecer registros con datos del catalogo si faltan
+    # (sector, isla, marca, modelo, denominacion). Asi el renderer
+    # funciona aunque el caller no haya enriquecido.
+    registros_enriquecidos = _enriquecer_registros(registros)
+
     # Filas tablas
-    filas_tabla = "\n".join(_build_fila_tabla(r, i) for i, r in enumerate(registros))
+    filas_tabla = "\n".join(_build_fila_tabla(r, i) for i, r in enumerate(registros_enriquecidos))
     filas_pendientes = "\n".join(
         _build_fila_pendiente(r, i, len(pendientes))
         for i, r in enumerate(pendientes)
@@ -446,13 +475,15 @@ def _replace_summary_cards(html: str, total: int, operativas: int, fds: int,
 
 
 def _replace_tabla_principal(html: str, filas_html: str) -> str:
-    """Reemplaza las filas hardcoded de la tabla principal por las generadas."""
+    """Inyecta las filas reales en la tabla principal.
+
+    El template tiene un marcador <!-- Filas inyectadas en runtime -->
+    dentro de <tbody>. Reemplaza ese comentario por las filas generadas.
+    """
     patron = re.compile(
-        r'(<tr style="background-color:#FFFFFF;">\s*'
-        r'<td style="padding:10px; font-family:\'Segoe UI\',Arial,sans-serif; font-size:12.5px; color:#1B2430; border-top:1px solid #EBEEF3;">15:42</td>.*?</tr>\s*)+',
-        re.DOTALL,
+        r'<!--\s*Filas inyectadas en runtime por services/email_renderer\.py\s*-->',
     )
-    return patron.sub(filas_html + "\n              ", html, count=1)
+    return patron.sub(filas_html, html, count=1)
 
 
 def _replace_resultado(html: str, total: int, resumen_html: str) -> str:
@@ -474,28 +505,19 @@ def _replace_resultado(html: str, total: int, resumen_html: str) -> str:
 
 
 def _replace_pendientes(html: str, filas_html: str) -> str:
-    """Reemplaza las filas de la tabla 'Pendientes para el proximo turno'."""
+    """Inyecta las filas reales en la tabla de pendientes."""
     patron = re.compile(
-        r'(<tr style="background-color:#FFFFFF;">\s*'
-        r'<td style="padding:10px; font-family:\'Segoe UI\',Arial,sans-serif; font-size:12.5px; font-weight:700; color:#1B2430; border-top:1px solid #EBEEF3;">1023</td>.*?</tr>\s*)+',
-        re.DOTALL,
+        r"<!--\s*Filas de pendientes inyectadas en runtime\s*-->",
     )
-    return patron.sub(filas_html + "\n              ", html, count=1)
+    return patron.sub(filas_html, html, count=1)
 
 
 def _replace_observaciones(html: str, obs_html: str) -> str:
-    """Reemplaza la lista hardcoded de observaciones.
-
-    El HTML original usa 'térmicas' con tilde real (no entidad). Aceptamos
-    ambas formas: el patron es la primera frase, robusta a tilde/entidad.
-    """
-    # Match tolerante: acepta "t&eacute;rmicas" o "térmicas"
+    """Inyecta las observaciones reales."""
     patron = re.compile(
-        r'(&#8226;&nbsp;\s*Se reemplazaron dos impresoras t(?:&eacute;|é)rmicas\.<br>\s*'
-        r'&#8226;&nbsp;.*?</td>)',
-        re.DOTALL,
+        r"<!--\s*Observaciones inyectadas en runtime\s*-->",
     )
-    return patron.sub(obs_html + "</td>", html, count=1)
+    return patron.sub(obs_html, html, count=1)
 
 
 def _replace_header_branding(
