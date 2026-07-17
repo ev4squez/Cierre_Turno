@@ -11,9 +11,9 @@ Reglas de negocio:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Iterable
 
-import pandas as pd
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
@@ -134,46 +134,167 @@ def eliminar_maquina(maquina_id: int, soft: bool = True) -> None:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Importacion desde Excel
 # ---------------------------------------------------------------------------
 
-
+# Columnas del Excel real (Cierre_Turno_V2.xlsm, hoja "Master").
+# Los nombres del Excel vienen con saltos de linea y variaciones, asi que
+# el matching se hace por normalizacion (lower, sin acentos, sin espacios).
 COLUMNAS_EXCEL = {
     # clave normalizada -> clave que el sistema entiende
     "numero": "numero_maquina",
-    "numero_maquina": "numero_maquina",
+    "codigo casino maquina": "numero_maquina",
+    "codigo casino": "numero_maquina",
+    "maquina": "numero_maquina",
+    "codigo scj": "codigo_scj",
+    "ubicacion maquina de azar sector": "sector",
     "sector": "sector",
+    "ubicacion maquina de azar isla": "isla",
     "isla": "isla",
-    "marca": "marca",
-    "modelo": "modelo",
+    "no de serie maquina de azar gabinete": "serie",
     "serie": "serie",
+    "fabricante gabinete": "marca",
+    "fabricante": "marca",
+    "modelo gabinete": "modelo",
+    "modelo": "modelo",
+    "nombre de modelo del programa de juego": "denominacion",
     "denominacion": "denominacion",
+    # Columnas de estado del Excel (no del catalogo maestro, pero utiles):
+    "estado": "_estado_excel",
+    "estado diario": "_estado_excel",
+    "reparable si/no": "_reparable",
+    "reparable si/no": "_reparable",
+    "problema": "_problema_historico",
+    "repuesto": "_repuesto_historico",
+    "accion": "_accion_historica",
 }
 
 
-def importar_desde_excel(ruta_archivo: str) -> dict:
+# Estados validos que pueden venir en el Excel.
+ESTADOS_VALIDOS_EXCEL = (
+    "Operativa",
+    "Fuera de Servicio",
+    "Pendiente Repuesto",
+    "Espera Servicio Tecnico",
+    "En Observacion",
+)
+
+
+def _normalizar_estado(valor: str | None) -> str:
+    """Mapea el estado del Excel a uno de los ESTADOS_MAQUINA.
+
+    Si viene vacio, '-', o algo desconocido, devuelve 'Operativa' como
+    fallback (es lo mas seguro para una maquina del catalogo maestro).
+    """
+    if not valor:
+        return "Operativa"
+    v = str(valor).strip()
+    if not v or v == "-":
+        return "Operativa"
+    # Match exacto (case-insensitive)
+    for est in ESTADOS_VALIDOS_EXCEL:
+        if v.lower() == est.lower():
+            return est
+    # Match parcial: si contiene "fuera" -> FDS, "pendiente" -> Pend Rep, etc
+    vl = v.lower()
+    if "fuera" in vl:
+        return "Fuera de Servicio"
+    if "pendiente" in vl:
+        return "Pendiente Repuesto"
+    if "espera" in vl:
+        return "Espera Servicio Tecnico"
+    if "observacion" in vl:
+        return "En Observacion"
+    return "Operativa"
+
+
+def importar_desde_excel(
+    ruta_archivo: str,
+    *,
+    hoja: str | None = None,
+    incluir_inactivos: bool = True,
+) -> dict:
     """Importa maquinas desde un Excel.
 
-    Comportamiento esperado (segun el spec):
+    Si el archivo tiene la hoja "Master" con el formato de Cierre_Turno_V2.xlsm,
+    se carga desde ahi. Si no, se carga la primera hoja con las columnas
+    reconocibles (Numero/Sector/Isla/Marca/Modelo/Serie/Denominacion).
+
+    Comportamiento:
 
     * Si la maquina existe (por ``numero_maquina``), actualiza campos.
-    * Si no existe, la inserta con ``activo=True`` y ``estado="Operativa"``.
-
-    Solo se procesan las columnas: Numero, Sector, Isla, Marca, Modelo,
-    Serie, Denominacion.
+    * Si no existe, la inserta con ``activo=True`` y el estado del Excel.
 
     Retorna
     -------
-    dict con conteo ``insertadas``, ``actualizadas`` y ``errores``.
+    dict con conteo ``insertadas``, ``actualizadas``, ``errores`` y
+    ``hoja_usada``.
     """
-    df = pd.read_excel(ruta_archivo, dtype=str, engine="openpyxl")
-    df.columns = [_norm_col(c) for c in df.columns]
+    from openpyxl import load_workbook
 
-    # Filtrar a las columnas que nos interesan
-    cols_presentes = {k: v for k, v in COLUMNAS_EXCEL.items() if k in df.columns}
-    if "numero_maquina" not in cols_presentes:
+    # Abrimos con data_only=True para tomar valores calculados por formulas
+    wb = load_workbook(ruta_archivo, data_only=True, read_only=True)
+
+    # Si no nos dicen hoja, priorizamos "Master", despues "Datos", sino la primera
+    hoja_elegida: str | None = hoja
+    if hoja_elegida is None:
+        for candidata in ("Master", "Datos"):
+            if candidata in wb.sheetnames:
+                hoja_elegida = candidata
+                break
+    if hoja_elegida is None:
+        # Tomar la primera hoja que tenga las columnas reconocibles
+        for sn in wb.sheetnames:
+            ws_temp = wb[sn]
+            primera_fila = next(ws_temp.iter_rows(min_row=1, max_row=1, values_only=True), ())
+            if primera_fila and any(
+                _norm_col(str(c or "")) in COLUMNAS_EXCEL
+                for c in primera_fila
+            ):
+                hoja_elegida = sn
+                break
+    if hoja_elegida is None:
         raise ValueError(
-            "El Excel debe contener una columna 'Numero' o 'Numero Maquina'"
+            f"No se encontro una hoja con columnas reconocibles en {ruta_archivo}. "
+            f"Hojas disponibles: {wb.sheetnames}"
+        )
+
+    ws = wb[hoja_elegida]
+    filas = list(ws.iter_rows(values_only=True))
+    wb.close()
+
+    if not filas:
+        return {"insertadas": 0, "actualizadas": 0, "errores": ["archivo vacio"], "hoja_usada": hoja_elegida}
+
+    # La primera fila suele tener headers multi-linea en este Excel
+    headers_raw = filas[0]
+    headers_norm = [_norm_col(str(c or "")) for c in headers_raw]
+    # En "Master" la fila 1 son los headers; si estan vacios, buscar en fila 2 o 3
+    if not any(headers_norm):
+        for offset in (1, 2):
+            if len(filas) > offset:
+                cand = [_norm_col(str(c or "")) for c in filas[offset]]
+                if any(cand):
+                    headers_raw = filas[offset]
+                    headers_norm = cand
+                    data_start = offset + 1
+                    break
+        else:
+            return {"insertadas": 0, "actualizadas": 0, "errores": ["no se encontraron headers"], "hoja_usada": hoja_elegida}
+    else:
+        data_start = 1
+
+    # Mapear columna indice -> campo del sistema
+    col_map: dict[int, str] = {}
+    for idx, header in enumerate(headers_norm):
+        if header in COLUMNAS_EXCEL:
+            col_map[idx] = COLUMNAS_EXCEL[header]
+
+    if "numero_maquina" not in col_map.values():
+        raise ValueError(
+            f"No se encontro la columna de numero de maquina en la hoja "
+            f"'{hoja_elegida}'. Headers encontrados: {headers_norm}"
         )
 
     insertadas = 0
@@ -181,37 +302,49 @@ def importar_desde_excel(ruta_archivo: str) -> dict:
     errores: list[str] = []
 
     with get_session() as s:
-        for idx, row in df.iterrows():
-            num_raw = row.get("numero_maquina")
-            if pd.isna(num_raw) or not str(num_raw).strip():
-                errores.append(f"Fila {idx + 2}: numero vacio")
-                continue
-
-            numero = str(num_raw).strip()
-            payload = {
-                "numero_maquina": numero,
-                "sector": _safe_str(row.get("sector")),
-                "isla": _safe_str(row.get("isla")),
-                "marca": _safe_str(row.get("marca")),
-                "modelo": _safe_str(row.get("modelo")),
-                "serie": _safe_str(row.get("serie")),
-                "denominacion": _safe_str(row.get("denominacion")),
-                "estado": "Operativa",
-                "activo": True,
-            }
-
-            existente = s.scalars(
-                select(Maquina).where(Maquina.numero_maquina == numero)
-            ).first()
-            if existente is None:
-                s.add(Maquina(**payload))
-                insertadas += 1
-            else:
-                for k, v in payload.items():
-                    if k == "numero_maquina":
+        for idx, row in enumerate(filas[data_start:], start=data_start + 1):
+            try:
+                # Construir payload solo con campos que existen en este Excel
+                payload: dict = {}
+                estado_excel = None
+                for col_idx, campo in col_map.items():
+                    if col_idx >= len(row):
                         continue
-                    setattr(existente, k, v)
-                actualizadas += 1
+                    valor = row[col_idx]
+                    valor_str = _safe_str(valor)
+                    if campo.startswith("_"):
+                        # Campos meta del Excel (estado, problema historico, etc)
+                        if campo == "_estado_excel":
+                            estado_excel = _normalizar_estado(valor_str)
+                        # los demas (_problema_historico, etc) se descartan
+                        continue
+                    payload[campo] = valor_str
+                if not payload.get("numero_maquina"):
+                    errores.append(f"Fila {idx + 1}: numero vacio")
+                    continue
+
+                # Si el Excel trae estado, lo usamos. Si no, default Operativa.
+                estado_final = estado_excel if estado_excel else "Operativa"
+                payload["estado"] = estado_final
+                payload["activo"] = True
+
+                # Upsert
+                existente = s.scalars(
+                    select(Maquina).where(
+                        Maquina.numero_maquina == payload["numero_maquina"]
+                    )
+                ).first()
+                if existente is None:
+                    s.add(Maquina(**payload))
+                    insertadas += 1
+                else:
+                    for k, v in payload.items():
+                        if k == "numero_maquina":
+                            continue
+                        setattr(existente, k, v)
+                    actualizadas += 1
+            except Exception as e:
+                errores.append(f"Fila {idx + 1}: {e}")
         s.flush()
 
     # Log simple del resultado
@@ -220,16 +353,21 @@ def importar_desde_excel(ruta_archivo: str) -> dict:
         log_path = LOGS_DIR / "importaciones.log"
         with log_path.open("a", encoding="utf-8") as f:
             f.write(
-                f"{pd.Timestamp.now().isoformat()} archivo={ruta_archivo} "
-                f"insertadas={insertadas} actualizadas={actualizadas} "
-                f"errores={len(errores)}\n"
+                f"{datetime.now().isoformat()} archivo={ruta_archivo} "
+                f"hoja={hoja_elegida} insertadas={insertadas} "
+                f"actualizadas={actualizadas} errores={len(errores)}\n"
             )
-            for e in errores:
+            for e in errores[:20]:  # solo primeros 20 errores en log
                 f.write(f"  - {e}\n")
     except OSError:
         pass
 
-    return {"insertadas": insertadas, "actualizadas": actualizadas, "errores": errores}
+    return {
+        "insertadas": insertadas,
+        "actualizadas": actualizadas,
+        "errores": errores,
+        "hoja_usada": hoja_elegida,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -268,14 +406,26 @@ def _normalizar(datos: dict, partial: bool = False) -> dict:
 
 
 def _safe_str(v) -> str:  # type: ignore[no-untyped-def]
+    """Convierte cualquier valor de openpyxl a string limpio.
+
+    None, NaN y floats NaN se vuelven "".
+    """
     if v is None:
         return ""
-    try:
-        if pd.isna(v):
+    # Numeros: int/float normales -> str(int) si es entero
+    if isinstance(v, (int,)):
+        return str(v)
+    if isinstance(v, float):
+        if v != v:  # NaN
             return ""
-    except (TypeError, ValueError):
-        pass
-    return str(v).strip()
+        if v.is_integer():
+            return str(int(v))
+        return str(v).strip()
+    # Cualquier otro caso (string, datetime, etc)
+    s = str(v).strip()
+    if s.lower() in ("nan", "none", "null"):
+        return ""
+    return s
 
 
 def _norm_col(name: str) -> str:
@@ -299,4 +449,6 @@ __all__: Iterable[str] = (
     "eliminar_maquina",
     "importar_desde_excel",
     "listar_activas",
+    "COLUMNAS_EXCEL",
+    "_normalizar_estado",
 )

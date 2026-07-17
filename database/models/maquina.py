@@ -26,13 +26,18 @@ class Maquina(Base):
     __tablename__ = "maquinas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Codigo Casino: identificador principal que usa el casino (5001, 5002, etc)
     numero_maquina: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    # Codigo SCJ: codigo de homologacion de la Superintendencia de Casinos de Juego (opcional)
+    codigo_scj: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sector: Mapped[str | None] = mapped_column(String(64), nullable=True)
     isla: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    marca: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    modelo: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    serie: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    denominacion: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Fabricante del gabinete (ARISTOCRAT Technologies, Inc, IGT, Konami, Zitro, etc)
+    marca: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    modelo: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    serie: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Nombre del Modelo del Programa de Juego (GOLDEN AMULET, THE GREAT WINALDO, etc)
+    denominacion: Mapped[str | None] = mapped_column(String(128), nullable=True)
     estado: Mapped[str] = mapped_column(
         String(64), nullable=False, default="Operativa", index=True
     )
@@ -59,6 +64,7 @@ class Maquina(Base):
         return {
             "id": self.id,
             "numero_maquina": self.numero_maquina,
+            "codigo_scj": self.codigo_scj or "",
             "sector": self.sector or "",
             "isla": self.isla or "",
             "marca": self.marca or "",
