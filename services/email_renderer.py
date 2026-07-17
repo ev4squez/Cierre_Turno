@@ -169,6 +169,7 @@ def render_informe(
     destinatarios: list[str] | None = None,
     cc: list[str] | None = None,
     firmante: str | None = None,
+    total_maquinas_catalogo: int | None = None,
 ) -> str:
     """Devuelve el HTML final listo para enviar.
 
@@ -248,8 +249,12 @@ def render_informe(
     pendientes_rep = sum(1 for r in registros if r.get("estado_final") == "Pendiente Repuesto")
     soporte = sum(1 for r in registros if r.get("estado_final") in ("Espera Servicio Tecnico", "En Observacion"))
     if tiempo_promedio_min is None:
-        tiempo_promedio_min = 0 if total == 0 else max(15, min(180, total * 8))
-    tiempo_txt = f"{tiempo_promedio_min} min"
+        # Si el caller no pasa un valor, lo calculamos en tiempo real
+        # desde la DB (updated_at - created_at de las Operativas del turno).
+        # Devuelve None si no hay Operativas -> mostramos "N/D" en el reporte.
+        from services.incidencias import tiempo_promedio_resolucion_min
+        tiempo_promedio_min = tiempo_promedio_resolucion_min(registros)
+    tiempo_txt = f"{tiempo_promedio_min} min" if tiempo_promedio_min is not None else "N/D"
 
     # Filas tablas
     filas_tabla = "\n".join(_build_fila_tabla(r, i) for i, r in enumerate(registros))
@@ -321,14 +326,28 @@ def render_informe(
 
     # 1. Preheader (visible en el body como .preheader)
     html_out = html_out.replace(
-        '<div class="preheader">\n  Resumen del turno Tarde &middot; 16 de julio de 2026 &middot; 6 incidencias registradas, 3 resueltas, 2 fuera de servicio, 1 pendiente de repuesto.\n</div>',
+        '<div class="preheader">\n  Resumen del turno Tarde · 16 de julio de 2026 · 6 incidencias registradas, 3 resueltas, 2 fuera de servicio, 1 pendiente de repuesto.\n</div>',
         f'<div class="preheader">\n  {_esc(preheader)}\n</div>',
     )
 
     # 2. Pill de fecha dentro del header azul
+    # Calcular total de maquinas del catalogo (antes del replace del pill)
+    if total_maquinas_catalogo is None:
+        from services.incidencias import total_maquinas_catalogo as _tmc
+        try:
+            total_maquinas_catalogo = _tmc(solo_activas=True)
+        except Exception:
+            total_maquinas_catalogo = None
+    pill_extra = ""
+    if total_maquinas_catalogo is not None:
+        pill_extra = (
+            f'                  <span style="display:inline-block; background-color:rgba(255,255,255,0.10); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px; margin-left:8px;">'
+            f'Catalogo: <span style="font-weight:800;">{total_maquinas_catalogo}</span> maquinas</span>'
+        )
+
     html_out = html_out.replace(
-        '<span style="display:inline-block; background-color:rgba(255,255,255,0.16); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px;">\n                    16 de julio de 2026 &nbsp;&middot;&nbsp; Turno Tarde\n                  </span>',
-        f'<span style="display:inline-block; background-color:rgba(255,255,255,0.16); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px;">\n                    {_esc(_format_fecha_larga(fecha))} &nbsp;&middot;&nbsp; Turno {_esc(turno_etiqueta)}\n                  </span>',
+        '<span style="display:inline-block; background-color:rgba(255,255,255,0.16); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px;">\n                    16 de julio de 2026 &nbsp;·&nbsp; Turno Tarde\n                  </span>',
+        f'<span style="display:inline-block; background-color:rgba(255,255,255,0.16); color:#FFFFFF; font-size:12.5px; font-weight:700; padding:6px 12px; border-radius:999px;">\n                    {_esc(_format_fecha_larga(fecha))} &nbsp;·&nbsp; Turno {_esc(turno_etiqueta)}\n                  </span>\n{pill_extra}\n                  ',
     )
 
     # 2b. Encabezado azul: casino + titulo del sistema (ahora con nombre real)
@@ -508,14 +527,14 @@ def _replace_header_branding(
     # Unicode directo) y "Técnico" con tilde directa, NO entidades HTML.
     patron_subtitulo = re.compile(
         r'<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:11px; font-weight:600; color:#C7DBF5; letter-spacing:0.5px; text-transform:uppercase;">'
-        r'Casino Ovalle\s*[·\.&middot;]\s*Depto\.?\s*T[eé]cnico y Sistemas'
+        r'Casino Ovalle\s*[·\.·]\s*Depto\.?\s*T[eé]cnico y Sistemas'
         r'</span>',
         re.DOTALL,
     )
     subtitulo_nuevo = (
         f'<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:11px; '
         f'font-weight:600; color:#C7DBF5; letter-spacing:0.5px; text-transform:uppercase;">'
-        f'{_esc(nombre_empresa)} &middot; {_esc(departamento)}</span>'
+        f'{_esc(nombre_empresa)} · {_esc(departamento)}</span>'
     )
     html = patron_subtitulo.sub(subtitulo_nuevo, html, count=1)
     return html

@@ -234,6 +234,59 @@ def resumen_turno(fecha: date, turno: str) -> ResumenTurno:
     return resumen
 
 
+def tiempo_promedio_resolucion_min(registros: list[dict]) -> int | None:
+    """Calcula el tiempo promedio de resolucion real.
+
+    Para cada incidencia Operativa del turno, resta ``updated_at - created_at``
+    y devuelve el promedio en minutos. Devuelve ``None`` si no hay datos
+    suficientes (sin Operativas, o sin timestamps).
+
+    Parametros
+    ----------
+    registros:
+        Lista de dicts de incidencias (los que devuelve ``listar_turno``
+        enriquecidos con ``created_at`` y ``updated_at``).
+    """
+    from datetime import datetime
+
+    tiempos: list[float] = []
+    for r in registros:
+        if r.get("estado_final") != "Operativa":
+            continue
+        ca = r.get("created_at")
+        ua = r.get("updated_at")
+        if not ca or not ua:
+            continue
+        # Si vienen como string ISO, parseamos
+        if isinstance(ca, str):
+            try:
+                ca = datetime.fromisoformat(ca)
+            except ValueError:
+                continue
+        if isinstance(ua, str):
+            try:
+                ua = datetime.fromisoformat(ua)
+            except ValueError:
+                continue
+        diff = (ua - ca).total_seconds() / 60.0
+        # Filtrar diffs negativos o absurdos (>24h)
+        if 0 < diff < 1440:
+            tiempos.append(diff)
+    if not tiempos:
+        return None
+    return int(sum(tiempos) / len(tiempos))
+
+
+def total_maquinas_catalogo(solo_activas: bool = True) -> int:
+    """Cuenta el total de maquinas en el catalogo.
+
+    Por defecto cuenta solo las activas (las que el operador ve en el
+    buscador). Con ``solo_activas=False`` incluye la papelera.
+    """
+    from services import admin as svc_admin
+    return len(svc_admin.listar_todas(incluir_inactivas=not solo_activas))
+
+
 def marcar_correo_enviado(ids: Iterable[int]) -> int:
     """Marca un lote de incidencias como ``correo_enviado=True``.
 

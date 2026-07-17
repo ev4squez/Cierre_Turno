@@ -83,4 +83,6 @@ class Incidencia(Base):
             "correo_enviado": self.correo_enviado,
             "turno": self.turno,
             "usuario": self.usuario,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

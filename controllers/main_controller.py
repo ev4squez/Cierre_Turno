@@ -249,6 +249,11 @@ class MainController:
             # los conteos ya calculados).
             resumen.registros = registros_enriquecidos
 
+            # Calcular tiempo promedio real desde la DB
+            from services.incidencias import tiempo_promedio_resolucion_min, total_maquinas_catalogo
+            tiempo_real = tiempo_promedio_resolucion_min(resumen.registros)
+            total_maquinas = total_maquinas_catalogo(solo_activas=True)
+
             resultado = svc_outlook.enviar_informe_turno(
                 resumen=resumen,
                 usuario=self._obtener_usuario_actual(),
@@ -259,6 +264,8 @@ class MainController:
                 modo=modo,
                 asunto_template=asunto_tpl,
                 logo_path=logo_path,
+                tiempo_promedio_min=tiempo_real,
+                total_maquinas_catalogo=total_maquinas,
             )
         finally:
             self.win.set_sending(False)

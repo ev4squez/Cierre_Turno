@@ -235,6 +235,7 @@ def enviar_informe_turno(
     logo_path: str | None = None,
     empresa: dict | None = None,
     firmante: str | None = None,
+    total_maquinas_catalogo: int | None = None,
 ) -> dict[str, Any]:
     """Helper que une render + envio. Usado por el controller.
 
@@ -271,6 +272,7 @@ def enviar_informe_turno(
         pendientes=pendientes,
         observaciones=observaciones,
         tiempo_promedio_min=tiempo_promedio_min,
+        total_maquinas_catalogo=total_maquinas_catalogo,
         empresa=empresa,
         destinatarios=destinatarios,
         cc=cc,
