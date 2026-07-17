@@ -198,13 +198,19 @@ def _desmarcar_usuario_actual(s) -> None:
 # ---------------------------------------------------------------------------
 
 
-def migrar_desde_config() -> dict:
+def migrar_desde_config(forzar: bool = False) -> dict:
     """Migra los tecnicos que viven en config.json a la tabla Tecnico.
 
-    Se ejecuta una sola vez al iniciar la app. Si la tabla ya tiene
-    datos, no hace nada. Retorna un resumen con insertadas/ya_existian.
+    Comportamiento idempotente con dos niveles:
 
-    Esta funcion es idempotente: se puede llamar varias veces sin miedo.
+    1. Si ``config.tecnicos_migrados == True``, no hace nada (la
+       migracion ya se hizo). Se re-migra solo si ``forzar=True``.
+
+    2. Si no esta marcado pero ya hay tecnicos activos en la DB con
+       los mismos nombres que en el config, se marca como migrado
+       sin duplicar (caso de DB que se compartio entre maquinas).
+
+    Retorna un resumen con insertadas/ya_existian/marcadas_actual.
     """
     from services import configuracion as svc_cfg
 
@@ -215,6 +221,10 @@ def migrar_desde_config() -> dict:
     insertadas = 0
     ya_existian = 0
     marcadas_actual = 0
+
+    # 1. Si ya esta marcado como migrado y no se pide forzar, salir
+    if not forzar and cfg.get("tecnicos_migrados", False):
+        return {"insertadas": 0, "ya_existian": 0, "marcadas_actual": 0, "skip_razon": "ya_migrado"}
 
     with get_session() as s:
         # Si ya hay al menos un tecnico activo, no migramos nada
@@ -249,6 +259,10 @@ def migrar_desde_config() -> dict:
                 marcadas_actual = 1
 
         s.flush()
+
+    # Marcar el config como migrado para que no se ejecute de nuevo
+    cfg["tecnicos_migrados"] = True
+    svc_cfg.guardar(cfg)
 
     return {
         "insertadas": insertadas,
