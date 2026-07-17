@@ -35,8 +35,8 @@ class SearchPanel(QFrame):
         super().__init__(parent)
         self.setObjectName("panelSearch")
         self.setProperty("class", "panel")
-        self.setMinimumWidth(420)
-        self.setMaximumWidth(520)
+        self.setMinimumWidth(360)
+        self.setMaximumWidth(440)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self._result_widgets: list[QFrame] = []
