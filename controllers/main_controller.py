@@ -210,23 +210,21 @@ class MainController:
         self._toast(f"Incidencia #{inc_id} eliminada.")
 
     def on_enviar_informe(self) -> None:
-        """Genera HTML + Outlook (o fallback a archivo)."""
+        """Genera HTML + Outlook (o fallback a archivo).
+
+        Antes de armar el correo, abre un dialogo modal que obliga a
+        identificar al tecnico que envia. Ese nombre se usa en el campo
+        "Enviado por" del informe y como firma al pie (sobreescribiendo
+        la firma por defecto del config).
+        """
+        from ui.firmante_dialog import FirmanteDialog
+
         cfg = svc_cfg.obtener()
         hoy = date.today()
         resumen = svc_inc.resumen_turno(hoy, self._turno_actual)
 
-        if resumen.total == 0:
-            res = QMessageBox.question(
-                self.win,
-                "Sin incidencias",
-                "No hay incidencias registradas en este turno. Enviar informe vacio?",
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No,
-            )
-            if res != QMessageBox.Yes:
-                return
-
-        # Preparamos parametros del correo
+        # Parametros del correo (los calculamos aca para mostrarlos en el
+        # dialogo y para usarlos en el envio).
         correo_cfg = cfg.get("correo", {})
         destinatarios = correo_cfg.get("destinatarios", []) or []
         cc = correo_cfg.get("cc", []) or []
@@ -239,6 +237,48 @@ class MainController:
         turno_cfg = cfg.get("turno", {}).get(self._turno_actual.lower(), {})
         rango = turno_cfg.get("rango", "")
         etiqueta = turno_cfg.get("etiqueta", self._turno_actual)
+
+        # Tecnicos disponibles para el dialogo (de la DB si se puede)
+        from services import tecnicos_db
+        try:
+            tecnicos_lista = [t["nombre"] for t in tecnicos_db.listar(incluir_inactivos=False)]
+        except Exception:
+            tecnicos_lista = list(cfg.get("tecnicos", []) or [])
+        # Preseleccion: usuario actual de la DB, si existe
+        preselect = ""
+        try:
+            actual = tecnicos_db.obtener_usuario_actual()
+            if actual is not None:
+                preselect = actual["nombre"]
+        except Exception:
+            pass
+        if not preselect:
+            preselect = self._obtener_usuario_actual()
+
+        # Dialogo modal: si cancela, no enviamos nada
+        dlg = FirmanteDialog(
+            parent=self.win,
+            tecnicos=tecnicos_lista,
+            preseleccionado=preselect,
+            destinatarios=destinatarios,
+        )
+        if dlg.exec() != FirmanteDialog.Accepted:
+            return
+        nombre_firmante = dlg.get_nombre()
+        if not nombre_firmante:
+            return
+
+        if resumen.total == 0:
+            res = QMessageBox.question(
+                self.win,
+                "Sin incidencias",
+                f"No hay incidencias registradas en este turno. "
+                f"Enviar informe vacio firmado por '{nombre_firmante}'?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if res != QMessageBox.Yes:
+                return
 
         self.win.set_sending(True)
         try:
@@ -254,9 +294,14 @@ class MainController:
             tiempo_real = tiempo_promedio_resolucion_min(resumen.registros)
             total_maquinas = total_maquinas_catalogo(solo_activas=True)
 
+            # El nombre del firmante va tanto al "Enviado por" del HTML
+            # (parametro ``usuario``) como al bloque firma al pie
+            # (parametro ``firmante``). Asi el destinatario sabe de
+            # quien viene aunque el sistema lo usen varios tecnicos.
             resultado = svc_outlook.enviar_informe_turno(
                 resumen=resumen,
-                usuario=self._obtener_usuario_actual(),
+                usuario=nombre_firmante,
+                firmante=nombre_firmante,
                 turno_etiqueta=etiqueta,
                 turno_rango=rango,
                 destinatarios=destinatarios,

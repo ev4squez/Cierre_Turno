@@ -186,7 +186,120 @@ def main() -> int:
           Path(resultado["archivo"]).exists(),
           f"archivo = {resultado['archivo']}")
 
-    section("7. Editar incidencia via controller")
+    section("7. Dialogo de firmante (Quien envia el informe?)")
+    # Test unitario del dialogo: que valide vacio, que acepte nombre
+    # existente, que acepte nombre nuevo (libre) y que cancele.
+    from ui.firmante_dialog import FirmanteDialog
+    from PySide6.QtWidgets import QDialog
+
+    # 7a. Validacion de nombre vacio
+    dlg = FirmanteDialog(
+        parent=win,
+        tecnicos=["Elvis Vasquez", "R. Fuentes"],
+        preseleccionado="Elvis Vasquez",
+    )
+    # Simulamos que el usuario borra el texto y trata de aceptar
+    dlg._cb_nombre.lineEdit().setText("")
+    # Llamamos al handler directo: tiene que rechazar (no aceptar)
+    dlg._on_accept()
+    check("dialogo rechaza nombre vacio", dlg.get_nombre() is None)
+
+    # 7b. Acepta nombre existente de la lista
+    dlg2 = FirmanteDialog(
+        parent=win,
+        tecnicos=["Elvis Vasquez", "R. Fuentes"],
+        preseleccionado="",
+    )
+    dlg2._cb_nombre.lineEdit().setText("R. Fuentes")
+    dlg2._on_accept()
+    check("dialogo acepta nombre de la lista",
+          dlg2.get_nombre() == "R. Fuentes",
+          f"get_nombre()={dlg2.get_nombre()!r}")
+
+    # 7c. Acepta nombre nuevo (libre, no estaba en la lista)
+    dlg3 = FirmanteDialog(
+        parent=win,
+        tecnicos=["R. Fuentes"],
+        preseleccionado="",
+    )
+    dlg3._cb_nombre.lineEdit().setText("  Tecnico Nuevo  ")
+    dlg3._on_accept()
+    check("dialogo acepta nombre libre (trim)",
+          dlg3.get_nombre() == "Tecnico Nuevo",
+          f"get_nombre()={dlg3.get_nombre()!r}")
+
+    # 7d. Controller NO envia si el dialogo se cancela
+    # Monkey-patch del dialogo: forzamos a que devuelva Rejected sin abrir
+    from ui import firmante_dialog as fd_mod
+    class _DlgCancela(FirmanteDialog):
+        def exec(self_inner):  # noqa: N805
+            return QDialog.Rejected
+    original_dlg = fd_mod.FirmanteDialog
+    fd_mod.FirmanteDialog = _DlgCancela
+    # Spy: si se llegara a llamar a enviar_informe_turno, fallamos
+    spy_envio = {"llamadas": 0}
+    original_envio = svc_outlook.enviar_informe_turno
+    def _spy_envio(*a, **kw):
+        spy_envio["llamadas"] += 1
+        return {"ok": True, "modo": "display", "outlook": False,
+                "mensaje": "spy", "archivo": ""}
+    svc_outlook.enviar_informe_turno = _spy_envio
+    try:
+        ctrl.on_enviar_informe()
+    finally:
+        fd_mod.FirmanteDialog = original_dlg
+        svc_outlook.enviar_informe_turno = original_envio
+    check("controller NO envia si dialogo se cancela",
+          spy_envio["llamadas"] == 0,
+          f"llamadas={spy_envio['llamadas']}")
+
+    # 7e. Controller SI envia con el nombre del dialogo
+    # Simulamos: dialogo devuelve "Elvis V." (capaz de tipear)
+    nombre_esperado = "Elvis V."
+    class _DlgAcepta(FirmanteDialog):
+        def __init__(self_inner, **kw):  # noqa: N805
+            super().__init__(**kw)
+            _DlgAcepta.ultimo = self_inner
+        def exec(self_inner):  # noqa: N805
+            self_inner._cb_nombre.lineEdit().setText(nombre_esperado)
+            self_inner._on_accept()
+            return QDialog.Accepted
+    fd_mod.FirmanteDialog = _DlgAcepta
+    # Spy captura el kwarg firmante/usuario
+    spy_kw = {}
+    def _spy_envio_kw(*a, **kw):
+        spy_kw.update(kw)
+        return {"ok": True, "modo": "display", "outlook": False,
+                "mensaje": "spy-kw", "archivo": ""}
+    svc_outlook.enviar_informe_turno = _spy_envio_kw
+    try:
+        ctrl.on_enviar_informe()
+    finally:
+        fd_mod.FirmanteDialog = original_dlg
+        svc_outlook.enviar_informe_turno = original_envio
+    check("controller envia con nombre del dialogo como usuario",
+          spy_kw.get("usuario") == nombre_esperado,
+          f"usuario={spy_kw.get('usuario')!r}")
+    check("controller envia con nombre del dialogo como firmante",
+          spy_kw.get("firmante") == nombre_esperado,
+          f"firmante={spy_kw.get('firmante')!r}")
+    # El HTML efectivamente lleva el nombre en "Enviado por" y firma al pie
+    html_con_firma = email_renderer.render_informe(
+        fecha=hoy,
+        turno_etiqueta="Tarde",
+        turno_rango="14:00-22:00",
+        usuario=nombre_esperado,
+        registros=resumen.registros,
+        firmante=nombre_esperado,
+        destinatarios=["jefe.tecnico@casino.local"],
+        cc=["subgerencia@casino.local"],
+        tiempo_promedio_min=42,
+    )
+    check("HTML renderizado lleva el firmante en el bloque firma",
+          nombre_esperado in html_con_firma,
+          f"buscado={nombre_esperado!r}")
+
+    section("8. Editar incidencia via controller")
     inc_id = regs[0]["id"]
     ctrl.on_editar_incidencia(inc_id)
     app.processEvents()
@@ -202,7 +315,7 @@ def main() -> int:
     check("1023 sincronizada a Operativa",
           svc_maq.obtener_por_numero("1023")["estado"] == "Operativa")
 
-    section("8. Eliminar incidencia")
+    section("9. Eliminar incidencia")
     svc_inc.eliminar(inc_id)
     regs3 = svc_inc.listar_turno(hoy, ctrl._turno_actual)
     check("tabla vacia tras eliminar", len(regs3) == 0,
