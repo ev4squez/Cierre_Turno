@@ -171,7 +171,7 @@ class TopBar(QFrame):
         layout.addSpacing(10)
         layout.addWidget(divider1)
         layout.addItem(spacer)
-        layout.addLayout(top_info)
+        layout.addLayout(tig)
         layout.addSpacing(6)
         layout.addWidget(user_chip)
         layout.addWidget(btn_import)
