@@ -37,8 +37,8 @@ class IncidenciaForm(QFrame):
         super().__init__(parent)
         self.setProperty("class", "panel")
         self.setObjectName("panelForm")
-        self.setMinimumWidth(500)
-        self.setMaximumWidth(620)
+        self.setMinimumWidth(440)
+        self.setMaximumWidth(560)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self._build_ui()

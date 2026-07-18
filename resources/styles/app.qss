@@ -16,7 +16,7 @@ QWidget#appRoot {
     background-color: #EEF1F6;
 }
 
-/* ====================== TOPBAR ====================== */
+/* ===================== TOPBAR ===================== */
 QFrame#topbar {
     background-color: #FFFFFF;
     border-bottom: 1px solid #E1E6ED;
@@ -58,11 +58,48 @@ QFrame#topDivider {
     max-height: 28px;
 }
 
-QLabel#infoChip {
-    color: #64748B;
-    font-size: 13px;
+/* Grupo info topbar: contenedor con borde sutil que aloja Fecha + Turno */
+QFrame#topInfoGroup {
+    background-color: #EEF1F6;
+    border: 1px solid #E1E6ED;
+    border-radius: 10px;
 }
 
+QFrame#topInfoCell {
+    background-color: transparent;
+    border: none;
+}
+
+QLabel#topInfoCellIcon {
+    color: #94A3B8;
+}
+
+QLabel#topInfoCellDot {
+    background-color: #16A34A;
+    border-radius: 4px;
+    min-width: 7px;
+    max-width: 7px;
+    min-height: 7px;
+    max-height: 7px;
+}
+
+QLabel#topInfoLabel {
+    color: #94A3B8;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+QLabel#topInfoValue {
+    color: #1B2430;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* Mantener compat: si algun widget viejo usa los objectNames anteriores,
+   los seguimos pintando igual (no rompen visualmente). */
+QLabel#infoChip,
 QLabel#turnoChip {
     color: #64748B;
     font-size: 13px;
@@ -78,7 +115,7 @@ QLabel#statusDot {
 }
 
 QFrame#userChip {
-    background-color: #EEF1F6;
+    background-color: #FFFFFF;
     border: 1px solid #E1E6ED;
     border-radius: 17px;
     padding: 0 10px;
@@ -198,18 +235,69 @@ QLabel.panelIcon {
     max-width: 20px;
 }
 
-/* ====================== SEARCH ====================== */
+/* ====================== DASHBOARD BAR (KPI) ====================== */
+QFrame#dashboardBar {
+    background-color: transparent;
+}
+
+QFrame.kpiCard {
+    background-color: #FFFFFF;
+    border: 1px solid #E1E6ED;
+    border-radius: 12px;
+    min-height: 70px;
+}
+
+QLabel#kpiIcon {
+    /* Icono coloreado por el selector [kpiColor] en el host */
+    background-color: transparent;
+    qproperty-alignment: AlignCenter;
+}
+
+QFrame.kpiCard[kpiColor="red"]   QLabel#kpiIcon { background-color: #FDECEC; color: #DC2626; border-radius: 10px; }
+QFrame.kpiCard[kpiColor="amber"] QLabel#kpiIcon { background-color: #FDF3E4; color: #D97706; border-radius: 10px; }
+QFrame.kpiCard[kpiColor="blue"]  QLabel#kpiIcon { background-color: #EAF1FB; color: #1E5AA8; border-radius: 10px; }
+QFrame.kpiCard[kpiColor="green"] QLabel#kpiIcon { background-color: #E7F7EC; color: #16A34A; border-radius: 10px; }
+
+/* Barra de color lateral (4px) por KPI */
+QFrame.kpiCard[kpiColor="red"]   { border-left: 4px solid #DC2626; }
+QFrame.kpiCard[kpiColor="amber"] { border-left: 4px solid #D97706; }
+QFrame.kpiCard[kpiColor="blue"]  { border-left: 4px solid #1E5AA8; }
+QFrame.kpiCard[kpiColor="green"] { border-left: 4px solid #16A34A; }
+
+QLabel#kpiLabel {
+    color: #94A3B8;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+QLabel#kpiValue {
+    color: #1B2430;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+QLabel#kpiValue[zero="true"] { color: #94A3B8; }
+
+/* ====================== SEARCH PANEL (dentro del panel central) ====================== */
+QFrame#searchPanel {
+    background-color: transparent;
+    border: none;
+}
+
 QLineEdit#searchInput {
-    border: 1.5px solid #1E5AA8;
+    border: 1.5px solid #E1E6ED;
     border-radius: 8px;
-    padding: 14px 14px 14px 42px;
-    font-size: 15px;
+    padding: 10px 14px 10px 38px;
+    font-size: 14px;
     background-color: #FFFFFF;
     color: #1B2430;
     selection-background-color: #EAF1FB;
 }
 QLineEdit#searchInput:focus {
     border: 1.5px solid #1E5AA8;
+    box-shadow: 0 0 0 3px #EAF1FB;
 }
 
 QLabel#searchHint {
@@ -382,6 +470,18 @@ QLabel.historyLine {
     padding: 8px 0;
 }
 QLabel.historyLine QLabel#hlDate { color: #1B2430; font-weight: 600; }
+
+/* Status pill chico del historial (Resuelta / Pendiente) */
+QLabel.hStatus {
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+QLabel.hStatus[severity="ok"]      { background-color: #E7F7EC; color: #16A34A; }
+QLabel.hStatus[severity="warning"] { background-color: #FDF3E4; color: #D97706; }
+QLabel.hStatus[severity="critical"]{ background-color: #FDECEC; color: #DC2626; }
+QLabel.hStatus[severity="info"]    { background-color: #EAF1FB; color: #1E5AA8; }
 
 /* ====================== FORM ====================== */
 QLabel.formLabel {

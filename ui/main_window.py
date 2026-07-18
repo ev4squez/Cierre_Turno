@@ -1,14 +1,15 @@
 """Ventana principal del Sistema FDS.
 
-Replica exacta de ``fds_ui.html`` en PySide6:
+Replica el layout de ``fds_ui.html`` en PySide6:
 
 * Topbar
-* 3 paneles: Search | Machine | Form
+* Dashboard bar (4 KPI cards: FDS, Pend, Obs, Res)
+* 2 paneles lado a lado: Machine (con buscador embebido) | Form
 * Tabla inferior
 * Footer
 
 Los widgets son 'tontos': emiten senales. Toda la logica vive en
-``controllers/main_controller.py`` (fase siguiente).
+``controllers/main_controller.py``.
 """
 
 from __future__ import annotations
@@ -27,11 +28,11 @@ from PySide6.QtWidgets import (
 
 from config import load_config
 from ui.bottom_table import BottomTablePanel
+from ui.dashboard_bar import DashboardBar
 from ui.footer import Footer
 from ui.form_panel import IncidenciaForm
 from ui.helpers import load_stylesheet
 from ui.machine_panel import MachinePanel
-from ui.search_panel import SearchPanel
 from ui.topbar import TopBar
 
 
@@ -57,7 +58,7 @@ class MainWindow(QMainWindow):
         cfg = load_config()
         self._empresa = cfg["empresa"]["nombre"]
         self._sistema = cfg["empresa"]["departamento"]
-        self._usuario = ""  # se completa con set_topbar_usuario() desde el controller
+        self._usuario = ""
         self._rol = "Operador de sala"
 
         self._build_ui()
@@ -86,16 +87,23 @@ class MainWindow(QMainWindow):
         )
         outer.addWidget(self._topbar)
 
-        # Main area: 3 panels + tabla inferior
-        self._search_panel = SearchPanel()
+        # Dashboard bar (4 KPI cards grandes)
+        self._dashboard = DashboardBar()
+        outer.addWidget(self._dashboard)
+
+        # Main area: 2 panels (Machine+Search / Form)
         self._machine_panel = MachinePanel()
         self._form = IncidenciaForm()
 
+        # Alias de compatibilidad: el smoke test y el controller acceden
+        # ``w._search_panel``. Ahora el search vive embebido dentro del
+        # MachinePanel, asi que exponemos la misma API via property.
+        self._search_panel = self._machine_panel.search_panel
+
         panels = QFrame()
         ph = QHBoxLayout(panels)
-        ph.setContentsMargins(16, 16, 16, 0)
+        ph.setContentsMargins(16, 6, 16, 0)
         ph.setSpacing(16)
-        ph.addWidget(self._search_panel)
         ph.addWidget(self._machine_panel, 1)
         ph.addWidget(self._form)
         outer.addWidget(panels, 1)
@@ -103,7 +111,7 @@ class MainWindow(QMainWindow):
         # Bottom table
         table_wrap = QFrame()
         tw = QVBoxLayout(table_wrap)
-        tw.setContentsMargins(16, 0, 16, 16)
+        tw.setContentsMargins(16, 16, 16, 16)
         tw.setSpacing(0)
         self._table = BottomTablePanel()
         tw.addWidget(self._table)
@@ -128,11 +136,9 @@ class MainWindow(QMainWindow):
     def _on_machine_selected(self, m: dict) -> None:
         """Slot interno: propaga la seleccion al panel central y al form."""
         if not isinstance(m, dict) or "numero_maquina" not in m:
-            # Si llega algo raro, ignorar en vez de romper la UI
             return
         self.show_machine(m)
         self.set_form_machine(m)
-        # Tambien emite al exterior por si el controller quiere hacer algo mas
         self.machineSelected.emit(m)
 
     def _confirm_logout(self) -> None:
@@ -160,7 +166,6 @@ class MainWindow(QMainWindow):
         self._topbar.set_fecha(fecha_txt)
         cfg = load_config()
         turno_cfg = cfg.get("turno", {})
-        # Determinar turno por hora
         h = now.hour
         if 8 <= h < 14:
             t = turno_cfg.get("manana", {"etiqueta": "Manana", "rango": "08:00-14:00"})
@@ -181,14 +186,8 @@ class MainWindow(QMainWindow):
 
     def set_quick_stats(self, *, fds: int, pendientes: int, resueltas: int,
                         en_observacion: int = 0) -> None:
-        """Actualiza las tarjetas del resumen rapido.
-
-        Hay 4 contadores: FDS, Pendientes, En Observacion, Resueltas.
-        El parametro ``en_observacion`` es opcional; si se omite o es
-        0, la tarjeta queda visible pero con valor 0 (asi el operador
-        la ve presente y entiende que hay un cuarto caso contemplado).
-        """
-        self._search_panel.set_quick_stats(
+        """Actualiza las cards KPI del dashboard top."""
+        self._dashboard.set_quick_stats(
             fds=fds,
             pendientes=pendientes,
             resueltas=resueltas,
@@ -199,12 +198,6 @@ class MainWindow(QMainWindow):
         self._form.set_tecnicos(tecnicos)
 
     def set_topbar_usuario(self, nombre: str, rol: str) -> None:
-        """Actualiza el chip de usuario del topbar (avatar + nombre + rol).
-
-        Llamado por el controller cuando detecta cambios en la DB
-        (ej. el operador cambio su nombre en Settings). Asi el topbar
-        refleja el cambio sin tener que reiniciar la app.
-        """
         self._topbar.set_usuario(nombre, rol)
 
     def set_form_machine(self, m: dict | None) -> None:

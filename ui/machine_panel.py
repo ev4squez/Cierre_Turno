@@ -1,4 +1,13 @@
-"""Panel central: informacion de la maquina seleccionada + historial."""
+"""Panel central: buscador embebido + info de la maquina + historial.
+
+Layout (post-rediseno):
+  [ Panel head: titulo + boton importar ]
+  [ Body scrollable ]
+    - SearchPanel (buscador + resultados live, max 280px alto)
+    - Cabecera maquina: N.° + modelo + pill de estado
+    - Grid 4x2 con campos de la maquina
+    - Historico de incidencias previas
+"""
 
 from __future__ import annotations
 
@@ -8,6 +17,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QScrollArea,
     QSizePolicy,
     QVBoxLayout,
@@ -15,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.helpers import severity_for_estado, svg
+from ui.search_panel import SearchPanel
 
 
 class MachinePanel(QFrame):
@@ -24,7 +35,7 @@ class MachinePanel(QFrame):
         super().__init__(parent)
         self.setProperty("class", "panel")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setMinimumWidth(420)
+        self.setMinimumWidth(500)
 
         self._build_ui()
         self.show_empty()
@@ -49,16 +60,37 @@ class MachinePanel(QFrame):
         # Body
         body = QFrame()
         bl = QVBoxLayout(body)
-        bl.setContentsMargins(18, 16, 18, 16)
+        bl.setContentsMargins(18, 14, 18, 16)
         bl.setSpacing(12)
 
-        # Machine header (num grande + pill estado)
+        # 1. Buscador embebido
+        self._search_panel = SearchPanel()
+        bl.addWidget(self._search_panel)
+
+        # Separador sutil
+        sep = QFrame()
+        sep.setObjectName("panelDivider")
+        sep.setFixedHeight(1)
+        sep.setStyleSheet("background-color: #EBEEF3;")
+        bl.addWidget(sep)
+
+        # 2. Cabecera de la maquina (num grande + subtexto + pill)
         machine_header = QFrame()
         mh_layout = QHBoxLayout(machine_header)
-        mh_layout.setContentsMargins(0, 0, 0, 0)
+        mh_layout.setContentsMargins(0, 4, 0, 4)
         mh_layout.setSpacing(12)
+
+        machine_id_wrap = QFrame()
+        mid_l = QVBoxLayout(machine_id_wrap)
+        mid_l.setContentsMargins(0, 0, 0, 0)
+        mid_l.setSpacing(2)
         self._big_num = QLabel("N.\u00ba -")
         self._big_num.setProperty("class", "machineBigNum")
+        self._machine_sub = QLabel("")
+        self._machine_sub.setProperty("class", "machineSub")
+        self._machine_sub.setStyleSheet("color:#64748B; font-size:13px; font-weight:500;")
+        mid_l.addWidget(self._big_num)
+        mid_l.addWidget(self._machine_sub)
 
         self._status_pill = QFrame()
         self._status_pill.setProperty("class", "statusPill")
@@ -74,20 +106,20 @@ class MachinePanel(QFrame):
         sp_layout.addWidget(self._status_text)
         sp_layout.addStretch(1)
 
-        mh_layout.addWidget(self._big_num)
-        mh_layout.addStretch(1)
-        mh_layout.addWidget(self._status_pill)
+        mh_layout.addWidget(machine_id_wrap, 1)
+        mh_layout.addWidget(self._status_pill, 0, Qt.AlignVCenter)
         bl.addWidget(machine_header)
 
-        # Info grid 2x4
+        # 3. Grid 4 columnas x 2 filas (compacto, todos los campos en una vista)
         grid_host = QFrame()
         grid = QGridLayout(grid_host)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(12)
+        grid.setHorizontalSpacing(10)
+        grid.setVerticalSpacing(10)
         self._fields: dict[str, QLabel] = {}
+        # 8 campos: mismo set que antes, ahora 4x2 en vez de 2x4
         labels = [
-            ("numero_maquina", "Numero de maquina"),
+            ("numero_maquina", "Numero"),
             ("sector", "Sector"),
             ("isla", "Isla"),
             ("marca", "Marca"),
@@ -97,12 +129,12 @@ class MachinePanel(QFrame):
             ("estado", "Estado actual"),
         ]
         for i, (key, lbl) in enumerate(labels):
-            row, col = divmod(i, 2)
+            row, col = divmod(i, 4)
             cell = QFrame()
             cell.setProperty("class", "field")
             cl = QVBoxLayout(cell)
-            cl.setContentsMargins(14, 11, 14, 11)
-            cl.setSpacing(5)
+            cl.setContentsMargins(12, 10, 12, 10)
+            cl.setSpacing(4)
             lbl_top = QLabel(lbl.upper())
             lbl_top.setProperty("class", "fieldLabel")
             val = QLabel("-")
@@ -111,30 +143,12 @@ class MachinePanel(QFrame):
             cl.addWidget(val)
             self._fields[key] = val
             grid.addWidget(cell, row, col)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
+        for c in range(4):
+            grid.setColumnStretch(c, 1)
         bl.addWidget(grid_host)
 
-        # Photo row
-        photo = QFrame()
-        photo.setProperty("class", "photoRow")
-        ph = QHBoxLayout(photo)
-        ph.setContentsMargins(14, 14, 14, 14)
-        ph.setSpacing(12)
-        thumb = QLabel()
-        thumb.setPixmap(svg("image", 22).pixmap(22, 22))
-        thumb_text = QLabel(
-            "Sin fotografia asociada - el operador puede adjuntar una "
-            "imagen de referencia de la incidencia."
-        )
-        thumb_text.setWordWrap(True)
-        thumb_text.setStyleSheet("color:#94A3B8; font-size:12px;")
-        ph.addWidget(thumb)
-        ph.addWidget(thumb_text, 1)
-        bl.addWidget(photo)
-
-        # History mini
-        bl.addSpacing(8)
+        # 4. Historico mini
+        bl.addSpacing(4)
         hist_title = QLabel("ULTIMAS INCIDENCIAS DE ESTA MAQUINA")
         hist_title.setProperty("class", "historyTitle")
         bl.addWidget(hist_title)
@@ -161,8 +175,14 @@ class MachinePanel(QFrame):
 
     # --- API --------------------------------------------------------------
 
+    @property
+    def search_panel(self) -> SearchPanel:
+        """Acceso al sub-widget buscador (util para tests y controller)."""
+        return self._search_panel
+
     def show_empty(self) -> None:
         self._big_num.setText("N.\u00ba -")
+        self._machine_sub.setText("")
         self._set_status("Sin seleccionar", "info")
         for key, lbl in self._fields.items():
             lbl.setText("-")
@@ -171,18 +191,18 @@ class MachinePanel(QFrame):
     def show_machine(self, m: dict) -> None:
         num = str(m.get("numero_maquina") or "-")
         self._big_num.setText(f"N.\u00ba {num}")
+        sub = f"{m.get('marca','')} {m.get('modelo','')}".strip()
+        self._machine_sub.setText(sub if sub else "")
         estado = m.get("estado") or "Operativa"
         self._set_status(estado, severity_for_estado(estado))
         for key, lbl in self._fields.items():
             v = m.get(key)
             lbl.setText(str(v) if v not in (None, "") else "-")
-        # Por ahora el historial se completa desde fuera (controller).
-        # Si no se setea, dejamos el placeholder.
         if self._history_layout.count() == 0:
             self._set_history([
                 {"fecha": "10/07/2026", "texto": "Falla en lector de billetes", "resuelta": True},
                 {"fecha": "28/06/2026", "texto": "Pantalla intermitente", "resuelta": True},
-                {"fecha": "02/06/2026", "texto": "Atasco de impresora de tickets", "resuelta": True},
+                {"fecha": "02/06/2026", "texto": "Atasco de impresora de tickets", "resuelta": False},
             ])
 
     def _set_status(self, text: str, severity: str) -> None:
@@ -192,7 +212,7 @@ class MachinePanel(QFrame):
         self._status_pill.style().polish(self._status_pill)
 
     def set_history(self, items: list[dict]) -> None:
-        """items: lista de {'fecha': 'DD/MM/YYYY', 'texto': '...', 'resuelta': bool}."""
+        """items: lista de {'fecha', 'texto', 'resuelta': bool}."""
         self._clear_history()
         self._set_history(items)
 
@@ -215,14 +235,18 @@ class MachinePanel(QFrame):
             h.setContentsMargins(0, 8, 0, 8)
             h.setSpacing(10)
             date_lbl = QLabel(f"<b>{it.get('fecha','')}</b>")
-            date_lbl.setStyleSheet("color:#1B2430; font-weight:600; font-size:12px;")
-            txt_lbl = QLabel(f"{it.get('texto','')} - {'Resuelta' if it.get('resuelta') else 'Pendiente'}")
-            txt_lbl.setStyleSheet("color:#64748B; font-size:12px;")
+            date_lbl.setStyleSheet("color:#1B2430; font-weight:600; font-size:12.5px;")
+            txt_lbl = QLabel(it.get("texto", ""))
+            txt_lbl.setStyleSheet("color:#64748B; font-size:12.5px;")
+            resuelta = bool(it.get("resuelta"))
+            tag = QLabel("Resuelta" if resuelta else "Pendiente")
+            tag.setProperty("class", "hStatus")
+            tag.setProperty("severity", "ok" if resuelta else "warning")
+            tag.setAlignment(Qt.AlignCenter)
             h.addWidget(date_lbl)
             h.addWidget(txt_lbl, 1)
-            line.setStyleSheet(
-                "QFrame{border-bottom:1px solid #EBEEF3;}"
-            )
+            h.addWidget(tag)
+            line.setStyleSheet("QFrame{border-bottom:1px solid #EBEEF3;}")
             self._history_layout.addWidget(line)
 
 

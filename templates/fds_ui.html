@@ -58,7 +58,7 @@
     display:flex;
     align-items:center;
     padding: 0 20px;
-    gap: 16px;
+    gap: 14px;
   }
   .logo{
     width: 36px; height:36px;
@@ -68,34 +68,52 @@
     color:#fff; font-weight:700; font-size:14px; letter-spacing:.5px;
     flex-shrink:0;
   }
-  .brand{ display:flex; flex-direction:column; line-height:1.15; margin-right: 10px;}
+  .brand{ display:flex; flex-direction:column; line-height:1.15; }
   .brand .name{ font-size:11px; color: var(--text-mute); font-weight:600; letter-spacing:.4px; text-transform:uppercase;}
   .brand .system{ font-size:15px; font-weight:600; color: var(--text-main);}
-  .topbar .divider{ width:1px; height:28px; background: var(--border); }
+  .topbar .divider{ width:1px; height:28px; background: var(--border); flex-shrink:0; }
   .topbar-spacer{ flex:1; }
+
+  /* Grupo centro: fecha + turno como bloques pegados */
   .top-info{
-    display:flex; align-items:center; gap: 18px; margin-right: 6px;
+    display:flex; align-items:stretch; gap:0;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow:hidden;
   }
-  .info-chip{
+  .top-info .ti-cell{
     display:flex; align-items:center; gap:8px;
+    padding: 7px 14px;
     font-size:13px; color: var(--text-sub);
   }
-  .info-chip .dot{ width:6px; height:6px; border-radius:50%; background: var(--green); }
+  .top-info .ti-cell + .ti-cell{ border-left: 1px solid var(--border); }
+  .top-info .ti-cell svg{ color: var(--text-mute); }
+  .top-info .ti-cell .dot{
+    width:7px; height:7px; border-radius:50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px rgba(22,163,74,.15);
+  }
+  .top-info .ti-label{
+    font-size:10px; font-weight:700; color: var(--text-mute);
+    text-transform:uppercase; letter-spacing:.4px; margin-right: 4px;
+  }
+
   .user-chip{
     display:flex; align-items:center; gap:9px;
-    padding: 6px 10px 6px 6px;
+    padding: 5px 12px 5px 5px;
     border-radius: 999px;
-    background: var(--bg-app);
+    background: var(--panel);
     border: 1px solid var(--border);
   }
   .avatar{
-    width:26px; height:26px; border-radius:50%;
+    width:30px; height:30px; border-radius:50%;
     background: var(--blue-tint); color: var(--blue);
     display:flex; align-items:center; justify-content:center;
     font-size:11px; font-weight:700;
   }
-  .user-chip .u-name{ font-size:13px; font-weight:600; color: var(--text-main);}
-  .user-chip .u-role{ font-size:11px; color: var(--text-mute);}
+  .user-chip .u-name{ font-size:13px; font-weight:600; color: var(--text-main); line-height:1.1;}
+  .user-chip .u-role{ font-size:11px; color: var(--text-mute); line-height:1.1; margin-top:1px;}
 
   .btn{
     border:none; cursor:pointer; font-family:inherit;
@@ -119,12 +137,64 @@
   }
   .btn-danger-ghost:hover{ background: var(--red-tint); }
 
+  /* ===================== DASHBOARD BAR (KPI) ===================== */
+  .dashboard-bar{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    padding: 14px 16px 4px 16px;
+  }
+  .kpi-card{
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: 14px 16px;
+    display:flex; align-items:center; gap:14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .kpi-card::before{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0;
+    width: 4px;
+    background: var(--blue);
+  }
+  .kpi-card.k-red::before   { background: var(--red); }
+  .kpi-card.k-amber::before { background: var(--amber); }
+  .kpi-card.k-blue::before  { background: var(--blue); }
+  .kpi-card.k-green::before { background: var(--green); }
+
+  .kpi-icon{
+    width:42px; height:42px;
+    border-radius: 10px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .kpi-card.k-red   .kpi-icon{ background: var(--red-tint);   color: var(--red); }
+  .kpi-card.k-amber .kpi-icon{ background: var(--amber-tint); color: var(--amber); }
+  .kpi-card.k-blue  .kpi-icon{ background: var(--blue-tint);  color: var(--blue); }
+  .kpi-card.k-green .kpi-icon{ background: var(--green-tint); color: var(--green); }
+
+  .kpi-text{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
+  .kpi-label{
+    font-size: 11px; font-weight:700; color: var(--text-mute);
+    text-transform:uppercase; letter-spacing:.5px;
+  }
+  .kpi-value{
+    font-size: 28px; font-weight:800; color: var(--text-main);
+    margin-top: 4px;
+    letter-spacing: -.5px;
+  }
+  .kpi-value.zero{ color: var(--text-mute); }
+
   /* ===================== MAIN LAYOUT ===================== */
   .main{
     flex:1;
-    display:flex;
+    display:grid;
+    grid-template-columns: minmax(0, 1fr) 460px;
     gap:16px;
-    padding: 16px;
+    padding: 14px 16px 16px 16px;
     min-height:0;
   }
 
@@ -137,9 +207,11 @@
     min-height:0;
   }
   .panel-head{
-    padding: 16px 18px 12px 18px;
+    padding: 14px 18px 12px 18px;
     border-bottom: 1px solid var(--border-soft);
     display:flex; align-items:center; justify-content:space-between;
+    gap: 12px;
+    flex-shrink:0;
   }
   .panel-title{
     font-size:14px; font-weight:700; color: var(--text-main);
@@ -149,44 +221,56 @@
     width:20px;height:20px; display:flex; align-items:center;justify-content:center;
     color: var(--blue);
   }
-  .panel-body{ padding: 16px 18px; overflow:auto; flex:1; min-height:0; }
+  .panel-body{ padding: 14px 18px; overflow:auto; flex:1; min-height:0; }
 
-  /* ---------- LEFT: search panel ---------- */
-  .panel-search{ width: 300px; flex-shrink:0; }
-  .search-box{
+  /* ===================== SEARCH BAR (dentro del panel central) ===================== */
+  .search-bar-wrap{
     position:relative;
+    margin-bottom: 12px;
   }
   .search-input-wrap{
     position:relative;
     display:flex; align-items:center;
   }
-  .search-input-wrap svg{ position:absolute; left:14px; color: var(--text-mute); }
+  .search-input-wrap svg.search-icon{
+    position:absolute; left:14px; color: var(--text-mute);
+  }
+  .search-input-wrap svg.clear-icon{
+    position:absolute; right:12px; color: var(--text-mute); cursor:pointer;
+  }
   .search-input{
     width:100%;
-    padding: 14px 14px 14px 42px;
-    font-size:15px;
+    padding: 11px 36px 11px 40px;
+    font-size:14px;
     border-radius: var(--radius-sm);
-    border: 1.5px solid var(--blue);
+    border: 1.5px solid var(--border);
     outline:none;
     background: var(--panel);
     color: var(--text-main);
-    box-shadow: 0 0 0 4px var(--blue-tint);
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .search-input:focus{
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px var(--blue-tint);
   }
   .search-input::placeholder{ color: var(--text-mute); font-weight:400; }
   .search-hint{
-    font-size:12px; color: var(--text-mute); margin-top:8px; padding-left:2px;
+    font-size:11.5px; color: var(--text-mute); margin-top:6px; padding-left:2px;
   }
 
   .search-results{
-    margin-top:14px;
-    display:flex; flex-direction:column; gap:6px;
+    margin-top:6px;
+    display:flex; flex-direction:column; gap:4px;
+    max-height: 180px;
+    overflow-y:auto;
+    padding-right: 4px;
   }
   .search-results .label{
-    font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.5px; margin: 4px 2px 2px 2px;
+    font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.5px; margin: 6px 2px 2px 2px;
   }
   .result-item{
     display:flex; align-items:center; gap:12px;
-    padding: 10px 10px;
+    padding: 8px 10px;
     border-radius: var(--radius-sm);
     border: 1px solid transparent;
     cursor:pointer;
@@ -194,42 +278,32 @@
   .result-item:hover{ background: var(--bg-app); }
   .result-item.active{ background: var(--blue-tint-hover); border-color:#C7DBF5; }
   .result-num{
-    width:44px; height:36px; border-radius:8px;
-    background: var(--panel); border:1px solid var(--border);
+    width:44px; height:34px; border-radius:8px;
+    background: var(--bg-app); border:1px solid var(--border);
     display:flex; align-items:center; justify-content:center;
     font-weight:700; font-size:12.5px; color: var(--blue); flex-shrink:0;
   }
   .result-item.active .result-num{ background:#fff; }
-  .result-text{ display:flex; flex-direction:column; min-width:0; }
+  .result-text{ display:flex; flex-direction:column; min-width:0; flex:1;}
   .result-text .r-title{ font-size:13px; font-weight:600; color: var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  .result-text .r-sub{ font-size:12px; color: var(--text-mute); }
-
-  .quick-stats{
-    margin-top:22px;
-    display:flex; flex-direction:column; gap:10px;
-  }
-  .quick-stats .qs-title{ font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.5px; margin-bottom:2px;}
-  .qs-row{
-    display:flex; align-items:center; justify-content:space-between;
-    padding: 10px 12px; border-radius: var(--radius-sm);
-    background: var(--bg-app);
-    font-size:13px;
-  }
-  .qs-row .qs-label{ color: var(--text-sub); display:flex; align-items:center; gap:8px;}
-  .qs-row .qs-value{ font-weight:700; color: var(--text-main); }
-  .tag-dot{ width:8px; height:8px; border-radius:50%; }
+  .result-text .r-sub{ font-size:11.5px; color: var(--text-mute); }
 
   /* ---------- CENTER: machine info ---------- */
-  .panel-center{ flex:0.9; }
+  .panel-center{ min-width:0; }
   .machine-header{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
-    margin-bottom:18px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
   }
   .machine-id{
-    display:flex; align-items:center; gap:14px;
+    display:flex; align-items:baseline; gap:10px;
   }
   .machine-id .big-num{
-    font-size: 26px; font-weight:800; color: var(--text-main); letter-spacing:.3px;
+    font-size: 28px; font-weight:800; color: var(--text-main); letter-spacing:.2px;
+    line-height:1;
+  }
+  .machine-id .machine-sub{
+    font-size: 13px; color: var(--text-sub); font-weight:500;
   }
   .status-pill{
     display:inline-flex; align-items:center; gap:7px;
@@ -238,71 +312,70 @@
     background: var(--amber-tint); color: var(--amber);
   }
   .status-pill.ok{ background: var(--green-tint); color: var(--green); }
+  .status-pill.critical{ background: var(--red-tint); color: var(--red); }
+  .status-pill.info{ background: var(--blue-tint); color: var(--blue); }
   .status-pill .dot{ width:7px; height:7px; border-radius:50%; background: currentColor; }
 
   .info-grid{
     display:grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
   }
   .field{
     background: var(--bg-app);
     border: 1px solid var(--border-soft);
     border-radius: var(--radius-sm);
-    padding: 11px 14px;
+    padding: 10px 12px;
   }
   .field .f-label{
-    font-size:11px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px;
+    font-size:10.5px; font-weight:700; color: var(--text-mute); text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px;
   }
-  .field .f-value{ font-size:14.5px; font-weight:600; color: var(--text-main); }
+  .field .f-value{ font-size:14px; font-weight:600; color: var(--text-main); }
 
-  .machine-photo-row{
-    margin-top:20px;
-    display:flex; gap:12px; align-items:center;
-    padding: 14px;
-    border: 1px dashed var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-mute);
-    font-size:12.5px;
+  .history-mini{ margin-top: 4px; }
+  .history-mini .h-title{
+    font-size:11px; font-weight:700; color: var(--text-mute);
+    text-transform:uppercase; letter-spacing:.4px; margin-bottom:8px;
   }
-  .thumb{
-    width:56px;height:56px;border-radius:10px;background:var(--bg-app);
-    display:flex;align-items:center;justify-content:center;color:var(--text-mute);flex-shrink:0;
-    border:1px solid var(--border);
-  }
-
-  .history-mini{
-    margin-top:22px;
-  }
-  .history-mini .h-title{ font-size:12px; font-weight:700; color: var(--text-sub); margin-bottom:10px; }
   .history-line{
     display:flex; align-items:center; gap:10px; padding:8px 0;
     border-bottom: 1px solid var(--border-soft);
-    font-size:12.5px; color: var(--text-sub);
+    font-size:13px; color: var(--text-sub);
   }
   .history-line:last-child{ border-bottom:none; }
   .history-line b{ color: var(--text-main); font-weight:600; }
+  .history-line .h-status{
+    margin-left:auto;
+    font-size:10.5px; font-weight:700;
+    padding: 2px 8px; border-radius: 999px;
+    background: var(--green-tint); color: var(--green);
+  }
+  .history-line .h-status.pending{ background: var(--amber-tint); color: var(--amber); }
 
   /* ---------- RIGHT: registration form ---------- */
-  .panel-form{ width: 500px; flex-shrink:0; }
-  .form-row{ margin-bottom:14px; }
+  .panel-form{ min-width:0; }
+  .form-row{ margin-bottom:12px; }
   .form-row label{
-    display:block; font-size:12px; font-weight:700; color: var(--text-sub);
+    display:block; font-size:11.5px; font-weight:700; color: var(--text-sub);
     margin-bottom:6px;
+    text-transform:uppercase; letter-spacing:.3px;
   }
   .form-row .req{ color: var(--red); }
   .two-col{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .form-row.disabled{ opacity:.6; }
 
   .input, .select, textarea{
     width:100%;
     font-family:inherit;
     font-size:13.5px;
-    padding: 10px 12px;
+    padding: 9px 12px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--panel);
     color: var(--text-main);
     outline:none;
+    transition: border-color .12s ease, box-shadow .12s ease;
   }
   .input:focus, .select:focus, textarea:focus{
     border-color: var(--blue);
@@ -321,7 +394,7 @@
   }
 
   .form-actions{
-    margin-top: 18px;
+    margin-top: 16px;
     display:flex; gap:10px;
   }
   .btn-primary{
@@ -349,14 +422,15 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-card);
-    height: 260px;
+    height: 280px;
     flex-shrink:0;
     display:flex; flex-direction:column;
     min-height:0;
   }
   .bp-head{
-    padding: 14px 18px; border-bottom:1px solid var(--border-soft);
+    padding: 12px 18px; border-bottom:1px solid var(--border-soft);
     display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
   }
   .bp-head .panel-title{ font-size:14px; }
   .bp-head .count-badge{
@@ -389,6 +463,7 @@
   .badge.pending{ background: var(--amber-tint); color: var(--amber); }
   .badge.resolved{ background: var(--green-tint); color: var(--green); }
   .badge.critical{ background: var(--red-tint); color: var(--red); }
+  .badge.info{ background: var(--blue-tint); color: var(--blue); }
   .row-actions{ display:flex; gap:6px; }
   .icon-btn{
     width:28px; height:28px; border-radius:7px;
@@ -442,13 +517,15 @@
     <div class="divider"></div>
     <div class="topbar-spacer"></div>
     <div class="top-info">
-      <div class="info-chip">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        Jueves, 16 de julio de 2026
+      <div class="ti-cell">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span class="ti-label">Fecha</span>
+        <span>Jueves, 16 de julio de 2026</span>
       </div>
-      <div class="info-chip">
+      <div class="ti-cell">
         <span class="dot"></span>
-        Turno Tarde · 14:00 – 22:00
+        <span class="ti-label">Turno</span>
+        <span>Tarde · 14:00 – 22:00</span>
       </div>
     </div>
     <div class="user-chip">
@@ -467,53 +544,53 @@
     </button>
   </div>
 
-  <!-- ===================== MAIN ===================== -->
-  <div class="main">
-
-    <!-- LEFT: Búsqueda -->
-    <div class="panel panel-search">
-      <div class="panel-head">
-        <div class="panel-title">
-          <span class="icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-          </span>
-          Buscar máquina
-        </div>
+  <!-- ===================== DASHBOARD BAR (KPI) ===================== -->
+  <div class="dashboard-bar">
+    <div class="kpi-card k-red">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
       </div>
-      <div class="panel-body">
-        <div class="search-box">
-          <div class="search-input-wrap">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
-            <input class="search-input" type="text" placeholder="Ingrese número de máquina...">
-          </div>
-          <div class="search-hint">Escribe el codigo, marca o modelo de la maquina</div>
-
-          <div class="search-results">
-            <div class="search-empty">
-              Busca una maquina por codigo, marca o modelo para empezar.
-            </div>
-          </div>
-        </div>
-
-        <div class="quick-stats">
-          <div class="qs-title">Resumen rápido</div>
-          <div class="qs-row">
-            <span class="qs-label"><span class="tag-dot" style="background:var(--red)"></span>Máquinas FDS activas</span>
-            <span class="qs-value">6</span>
-          </div>
-          <div class="qs-row">
-            <span class="qs-label"><span class="tag-dot" style="background:var(--amber)"></span>Pendientes de revisión</span>
-            <span class="qs-value">2</span>
-          </div>
-          <div class="qs-row">
-            <span class="qs-label"><span class="tag-dot" style="background:var(--green)"></span>Resueltas hoy</span>
-            <span class="qs-value">9</span>
-          </div>
-        </div>
+      <div class="kpi-text">
+        <span class="kpi-label">FDS activas</span>
+        <span class="kpi-value">6</span>
       </div>
     </div>
 
-    <!-- CENTER: Información de la máquina -->
+    <div class="kpi-card k-amber">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </div>
+      <div class="kpi-text">
+        <span class="kpi-label">Pendientes</span>
+        <span class="kpi-value">2</span>
+      </div>
+    </div>
+
+    <div class="kpi-card k-blue">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/></svg>
+      </div>
+      <div class="kpi-text">
+        <span class="kpi-label">En observación</span>
+        <span class="kpi-value zero">0</span>
+      </div>
+    </div>
+
+    <div class="kpi-card k-green">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
+      </div>
+      <div class="kpi-text">
+        <span class="kpi-label">Resueltas hoy</span>
+        <span class="kpi-value">9</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main">
+
+    <!-- CENTER: Información de la máquina + búsqueda -->
     <div class="panel panel-center">
       <div class="panel-head">
         <div class="panel-title">
@@ -522,40 +599,80 @@
           </span>
           Información de la máquina
         </div>
+        <button class="btn btn-icon-only" title="Importar máquinas desde Excel">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18M14 13l3 3M17 13l-3 3"/></svg>
+        </button>
       </div>
       <div class="panel-body">
+
+        <!-- Buscador integrado -->
+        <div class="search-bar-wrap">
+          <div class="search-input-wrap">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input class="search-input" type="text" placeholder="Buscar por código, marca o modelo...">
+            <svg class="clear-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </div>
+          <div class="search-hint">2 coincidencias encontradas</div>
+
+          <div class="search-results">
+            <div class="result-item active">
+              <div class="result-num">1023</div>
+              <div class="result-text">
+                <span class="r-title">Aristocrat MarsX</span>
+                <span class="r-sub">Isla 05 · Sector Alto</span>
+              </div>
+            </div>
+            <div class="result-item">
+              <div class="result-num">1045</div>
+              <div class="result-text">
+                <span class="r-title">Konami KP3</span>
+                <span class="r-sub">Isla 07 · Sector Alto</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cabecera de la máquina seleccionada -->
         <div class="machine-header">
           <div class="machine-id">
-            <span class="big-num">N.&deg; &mdash;</span>
+            <span class="big-num">N.º 1023</span>
+            <span class="machine-sub">Aristocrat MarsX</span>
           </div>
-          <span class="status-pill">
-            <span class="dot"></span> Sin seleccionar
+          <span class="status-pill critical">
+            <span class="dot"></span> Fuera de Servicio
           </span>
         </div>
 
+        <!-- Grid 4 columnas x 2 filas -->
         <div class="info-grid">
-          <div class="field"><div class="f-label">Número de máquina</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Sector</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Isla</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Marca</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Modelo</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Serie</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Denominación</div><div class="f-value">&mdash;</div></div>
-          <div class="field"><div class="f-label">Estado actual</div><div class="f-value">&mdash;</div></div>
+          <div class="field"><div class="f-label">Sector</div><div class="f-value">Sector Alto</div></div>
+          <div class="field"><div class="f-label">Isla</div><div class="f-value">Isla 05</div></div>
+          <div class="field"><div class="f-label">Marca</div><div class="f-value">Aristocrat</div></div>
+          <div class="field"><div class="f-label">Modelo</div><div class="f-value">MarsX</div></div>
+          <div class="field"><div class="f-label">Serie</div><div class="f-value">AR-88213-CL</div></div>
+          <div class="field"><div class="f-label">Denominación</div><div class="f-value">$100</div></div>
+          <div class="field"><div class="f-label">Estado actual</div><div class="f-value">FDS</div></div>
+          <div class="field"><div class="f-label">Código casino</div><div class="f-value">5012</div></div>
         </div>
 
-        <div class="machine-photo-row">
-          <div class="thumb">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-          </div>
-          <div>Sin fotografía asociada · el operador puede adjuntar una imagen de referencia de la incidencia.</div>
-        </div>
-
+        <!-- Histórico -->
         <div class="history-mini">
           <div class="h-title">Últimas incidencias de esta máquina</div>
-          <div class="history-line"><b>10/07/2026</b>&nbsp;— Falla en lector de billetes · Resuelta</div>
-          <div class="history-line"><b>28/06/2026</b>&nbsp;— Pantalla intermitente · Resuelta</div>
-          <div class="history-line"><b>02/06/2026</b>&nbsp;— Atasco de impresora de tickets · Resuelta</div>
+          <div class="history-line">
+            <b>10/07/2026</b>
+            <span>— Falla en lector de billetes</span>
+            <span class="h-status">Resuelta</span>
+          </div>
+          <div class="history-line">
+            <b>28/06/2026</b>
+            <span>— Pantalla intermitente</span>
+            <span class="h-status">Resuelta</span>
+          </div>
+          <div class="history-line">
+            <b>02/06/2026</b>
+            <span>— Atasco de impresora de tickets</span>
+            <span class="h-status pending">Pendiente</span>
+          </div>
         </div>
       </div>
     </div>
@@ -578,8 +695,13 @@
           </div>
           <div class="form-row">
             <label>Hora</label>
-            <input class="input" type="text" value="" disabled>
+            <input class="input" type="text" value="14:32" disabled>
           </div>
+        </div>
+
+        <div class="form-row">
+          <label>Máquina</label>
+          <input class="input" type="text" value="1023 — Aristocrat MarsX" disabled>
         </div>
 
         <div class="form-row">
@@ -611,8 +733,20 @@
         </div>
 
         <div class="form-row">
-          <label>Descripción del problema <span class="req">*</span></label>
-          <textarea rows="4" placeholder="Detalle la incidencia observada...">La máquina se reinicia sola cada 3-4 minutos aproximadamente. Se probó reinicio manual sin éxito.</textarea>
+          <label>Acción realizada</label>
+          <textarea rows="3" placeholder="Detalle qué hizo el técnico">Se reemplazó fuente de alimentación y se actualizó firmware a v3.2.</textarea>
+        </div>
+
+        <div class="form-row">
+          <label>Estado final <span class="req">*</span></label>
+          <select class="select">
+            <option>Seleccionar estado...</option>
+            <option selected>Fuera de Servicio</option>
+            <option>En Observación</option>
+            <option>Pendiente Repuesto</option>
+            <option>Espera Servicio Técnico</option>
+            <option>Operativa</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -636,7 +770,7 @@
     <div class="bp-head">
       <div class="panel-title">
         Incidencias del turno
-        <span class="count-badge">0 registros</span>
+        <span class="count-badge">3 registros</span>
       </div>
       <button class="btn btn-ghost">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg>
@@ -658,9 +792,49 @@
           </tr>
         </thead>
         <tbody>
-          <tr class="empty-row">
-            <td colspan="8" style="text-align:center; padding:40px; color:#94A3B8; font-size:13px;">
-              Aun no se registraron incidencias en este turno.
+          <tr>
+            <td>14:32</td>
+            <td><b>1023</b></td>
+            <td>Sector Alto</td>
+            <td>Aristocrat</td>
+            <td>Falla electrónica</td>
+            <td><span class="badge critical">Fuera de Servicio</span></td>
+            <td>Rodrigo Fuentes</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>15:10</td>
+            <td><b>1045</b></td>
+            <td>Sector Alto</td>
+            <td>Konami</td>
+            <td>Pantalla intermitente</td>
+            <td><span class="badge pending">En Observación</span></td>
+            <td>Camila Torres</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>16:45</td>
+            <td><b>2056</b></td>
+            <td>Sector Bajo</td>
+            <td>IGT</td>
+            <td>Billetero atascado</td>
+            <td><span class="badge resolved">Operativa</span></td>
+            <td>Rodrigo Fuentes</td>
+            <td>
+              <div class="row-actions">
+                <button class="icon-btn" title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="icon-btn danger" title="Eliminar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg></button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -672,26 +846,26 @@
   <div class="footer">
     <div class="foot-stat">
       <span class="fs-label">Total de incidencias</span>
-      <span class="fs-value">0</span>
+      <span class="fs-value">3</span>
     </div>
     <div class="foot-divider"></div>
     <div class="foot-stat">
-      <span class="fs-label">M&aacute;quinas registradas</span>
-      <span class="fs-value">0</span>
+      <span class="fs-label">Máquinas registradas</span>
+      <span class="fs-value">3</span>
     </div>
     <div class="foot-divider"></div>
     <div class="foot-stat">
       <span class="fs-label">Hora de inicio del turno</span>
-      <span class="fs-value">&mdash;</span>
+      <span class="fs-value">14:00</span>
     </div>
     <div class="foot-divider"></div>
     <div class="foot-stat">
       <span class="fs-label">Pendientes</span>
-      <span class="fs-value accent">0</span>
+      <span class="fs-value accent">2</span>
     </div>
     <div class="footer-spacer"></div>
     <button class="btn btn-report">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z" opacity="0"/><path d="M22 6L12 13 2 6"/><path d="M2 6h20v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6L12 13 2 6"/><path d="M2 6h20v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>
       Enviar Informe por Outlook
     </button>
   </div>
