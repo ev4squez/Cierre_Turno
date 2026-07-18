@@ -60,6 +60,10 @@ def _populate_db() -> None:
     reset_db()
     for m in CATALOGO:
         svc_maq.crear_maquina(m)
+    # Re-migrar tecnicos desde config.json aunque el flag tecnicos_migrados
+    # este en True (la DB esta vacia y los tecnicos del form los necesitamos).
+    from services import tecnicos_db as _tec_db
+    _tec_db.migrar_desde_config(forzar=True)
 
 
 _FAILS: list[str] = []

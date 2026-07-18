@@ -272,7 +272,11 @@ def render_informe(
     operativas = sum(1 for r in registros if r.get("estado_final") == "Operativa")
     fds = sum(1 for r in registros if r.get("estado_final") == "Fuera de Servicio")
     pendientes_rep = sum(1 for r in registros if r.get("estado_final") == "Pendiente Repuesto")
-    soporte = sum(1 for r in registros if r.get("estado_final") in ("Espera Servicio Tecnico", "En Observacion"))
+    espera_soporte = sum(1 for r in registros if r.get("estado_final") == "Espera Servicio Tecnico")
+    en_observacion = sum(1 for r in registros if r.get("estado_final") == "En Observacion")
+    # ``soporte`` se conserva como alias para no romper quien lo consuma
+    # y para backward-compat. Es la suma de espera_soporte + en_observacion.
+    soporte = espera_soporte + en_observacion
     if tiempo_promedio_min is None:
         # Si el caller no pasa un valor, lo calculamos en tiempo real
         # desde la DB (updated_at - created_at de las Operativas del turno).
@@ -298,15 +302,53 @@ def render_informe(
     ) if observaciones else "Sin observaciones generales."
 
     # Resumen narrativo del bloque "Resultado de la jornada"
+    #
+    # Coherencia aritmetica obligatoria: los bullets tienen que sumar
+    # exactamente ``total`` (la cantidad que dice el header "se
+    # registraron N incidencias").
+    #
+    # Las 5 categorias son MUTUAMENTE EXCLUYENTES porque cada
+    # incidencia tiene UN solo ``estado_final`` de los 5 valores
+    # posibles (Operativa / Fuera de Servicio / Pendiente Repuesto /
+    # Espera Servicio Tecnico / En Observacion). En consecuencia:
+    #   operativas + fds + pendientes_rep + espera_soporte + en_observacion = total
+    #
+    # Antes los bullets mostraban "espera soporte + en observacion"
+    # como una sola linea "requieren intervencion especializada", que
+    # se solapaba con "Fuera de Servicio" cuando el operador marcaba
+    # una maquina como FDS con nota de soporte -> la suma quedaba mal.
+    # Ahora cada estado tiene su bullet y la suma cierra siempre.
     resumen_lineas: list[str] = []
     if operativas:
-        resumen_lineas.append(f"&#8226;&nbsp; <b>{operativas}</b> m&aacute;quinas fueron reparadas y quedaron nuevamente operativas.")
+        # Singular: "1 maquina fue reparada", plural: "N maquinas fueron reparadas"
+        sufijo_maq = "" if operativas == 1 else "s"
+        verbo = "fue" if operativas == 1 else "fueron"
+        sufijo_adj = "" if operativas == 1 else "s"
+        resumen_lineas.append(
+            f"&#8226;&nbsp; <b>{operativas}</b> m&aacute;quina{sufijo_maq} "
+            f"{verbo} reparada{sufijo_adj} y {'qued&oacute;' if operativas == 1 else 'quedaron'} nuevamente operativa{sufijo_adj}."
+        )
     if fds:
-        resumen_lineas.append(f"&#8226;&nbsp; <b>{fds}</b> m&aacute;quinas permanecen Fuera de Servicio.")
+        resumen_lineas.append(
+            f"&#8226;&nbsp; <b>{fds}</b> m&aacute;quina{'s' if fds != 1 else ''} "
+            f"permanecen Fuera de Servicio."
+        )
     if pendientes_rep:
-        resumen_lineas.append(f"&#8226;&nbsp; <b>{pendientes_rep}</b> m&aacute;quina{'s' if pendientes_rep != 1 else ''} qued&oacute;{'aron' if pendientes_rep != 1 else ''} pendiente{'s' if pendientes_rep != 1 else ''} por disponibilidad de repuestos.")
-    if soporte:
-        resumen_lineas.append(f"&#8226;&nbsp; <b>{soporte}</b> m&aacute;quina{'s' if soporte != 1 else ''} requiere{'n' if soporte != 1 else ''} intervenci&oacute;n especializada o soporte del fabricante.")
+        resumen_lineas.append(
+            f"&#8226;&nbsp; <b>{pendientes_rep}</b> m&aacute;quina{'s' if pendientes_rep != 1 else ''} "
+            f"qued&oacute;{'aron' if pendientes_rep != 1 else ''} pendiente{'s' if pendientes_rep != 1 else ''} "
+            f"por disponibilidad de repuestos."
+        )
+    if espera_soporte:
+        resumen_lineas.append(
+            f"&#8226;&nbsp; <b>{espera_soporte}</b> m&aacute;quina{'s' if espera_soporte != 1 else ''} "
+            f"requiere{'n' if espera_soporte != 1 else ''} intervenci&oacute;n especializada o soporte del fabricante."
+        )
+    if en_observacion:
+        resumen_lineas.append(
+            f"&#8226;&nbsp; <b>{en_observacion}</b> m&aacute;quina{'s' if en_observacion != 1 else ''} "
+            f"queda{'n' if en_observacion != 1 else ''} en observaci&oacute;n para seguimiento."
+        )
     resumen_html = "<br>".join(resumen_lineas) if resumen_lineas else "Sin novedades relevantes durante la jornada."
 
     # Preheader
@@ -505,21 +547,35 @@ def _replace_tabla_principal(html: str, filas_html: str) -> str:
 
 
 def _replace_resultado(html: str, total: int, resumen_html: str) -> str:
-    """Reemplaza el bloque narrativo del 'Resultado de la jornada'."""
+    """Reemplaza el bloque narrativo del 'Resultado de la jornada'.
+
+    Marca: el bloque arranca con 'Durante el turno se registraron' y
+    termina con el cierre del <table> que contiene los bullets
+    (placeholder original del template). Reemplaza todo lo que esta
+    entre la apertura del <span> que contiene 'Durante el turno' y
+    el cierre del <table> siguiente, preservando el resto del HTML.
+    """
+    # Tomamos el bloque: desde "Durante el turno" hasta el </table>
+    # posterior que cierra el contenedor de los bullets. Eso es robusto
+    # independiente de cuantos bullets haya y de si el patron_fin aparece.
     patron_inicio = "Durante el turno se registraron"
-    patron_fin = "requieren intervenci&oacute;n especializada o soporte del fabricante."
     i = html.find(patron_inicio)
     if i < 0:
         return html
-    j = html.find(patron_fin, i)
+    # El bloque placeholder cierra con </table> despues del ultimo bullet.
+    # Saltamos al </table> que sigue al patron_inicio (no el de apertura).
+    fin_tabla = "</table>"
+    j = html.find(fin_tabla, i)
     if j < 0:
         return html
-    j += len(patron_fin)
+    j += len(fin_tabla)
     nuevo_bloque = (
         f"Durante el turno se registraron <b>{total}</b> incidencias. De ellas:<br><br>"
         f"{resumen_html}"
+        f"\n                    "
     )
-    return html[:i] + nuevo_bloque + html[j:]
+    # Reemplazamos desde i hasta j (inclusive del </table>)
+    return html[:i] + nuevo_bloque + html[j:]  # noqa: E501
 
 
 def _replace_pendientes(html: str, filas_html: str) -> str:
