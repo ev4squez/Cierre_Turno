@@ -112,6 +112,11 @@ class TopBar(QFrame):
         tig.setSpacing(0)
         tig.addWidget(fecha_cell)
         tig.addWidget(turno_cell)
+        # NO usar layout.addLayout(tig) aca: el layout ya quedo asociado
+        # a top_info via el constructor. Si lo agregamos al layout
+        # principal, PySide6 re-parenta tig (y los QLabels que viven
+        # dentro de fecha_cell/turno_cell se quedan sin parent visible).
+        # En vez de eso, agregamos el FRAME top_info como widget.
 
         # User chip
         self._avatar = QLabel(initials(usuario_nombre))
@@ -171,7 +176,7 @@ class TopBar(QFrame):
         layout.addSpacing(10)
         layout.addWidget(divider1)
         layout.addItem(spacer)
-        layout.addLayout(tig)
+        layout.addWidget(top_info)
         layout.addSpacing(6)
         layout.addWidget(user_chip)
         layout.addWidget(btn_import)
