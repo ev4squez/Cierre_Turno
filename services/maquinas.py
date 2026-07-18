@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 from sqlalchemy.exc import IntegrityError
 
 from config import (
@@ -64,6 +64,42 @@ def buscar_maquinas(query: str, limit: int = 25) -> list[dict]:
             )
 
         stmt = stmt.order_by(Maquina.numero_maquina.asc()).limit(limit)
+        return [m.to_dict() for m in s.scalars(stmt)]
+
+
+def buscar_maquinas_priorizando_problematicas(query: str, limit: int = 25) -> list[dict]:
+    """Como ``buscar_maquinas`` pero prioriza maquinas con estado != Operativa.
+
+    Pensado para la lista inicial del buscador (cuando no hay query):
+    asi una maquina "En Observacion", FDS, Pendiente Repuesto o
+    Espera Servicio Tecnico aparece al tope aunque el operador no haya
+    tipeado nada. Si hay query, devuelve en el orden normal.
+
+    El orden de prioridad al tope es:
+      En Observacion > Fuera de Servicio > Espera Servicio Tecnico
+      > Pendiente Repuesto > Operativa
+    Implementado con un ``CASE`` portable a SQLite + Postgres.
+    """
+    q = (query or "").strip()
+    if q:
+        # Si hay query, delegamos al comportamiento normal.
+        return buscar_maquinas(query, limit=limit)
+
+    prioridad = text(
+        "CASE estado "
+        "WHEN 'En Observacion' THEN 0 "
+        "WHEN 'Fuera de Servicio' THEN 1 "
+        "WHEN 'Espera Servicio Tecnico' THEN 2 "
+        "WHEN 'Pendiente Repuesto' THEN 3 "
+        "ELSE 4 END"
+    )
+    with get_session() as s:
+        stmt = (
+            select(Maquina)
+            .where(Maquina.activo.is_(True))
+            .order_by(prioridad, Maquina.numero_maquina.asc())
+            .limit(limit)
+        )
         return [m.to_dict() for m in s.scalars(stmt)]
 
 

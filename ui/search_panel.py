@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.helpers import clear_layout, svg
+from ui.helpers import clear_layout, severity_for_estado, svg
 
 
 class SearchPanel(QFrame):
@@ -102,7 +102,7 @@ class SearchPanel(QFrame):
         self._results_layout.addStretch(1)
         body.addWidget(self._results_host, 1)
 
-        # Quick stats (separador + titulo + 3 filas)
+        # Quick stats (separador + titulo + 4 filas)
         body.addSpacing(14)
         qs_title = QLabel("RESUMEN RAPIDO")
         qs_title.setProperty("class", "qsTitle")
@@ -111,6 +111,13 @@ class SearchPanel(QFrame):
         body.addWidget(self._qs_red)
         self._qs_amber = self._build_qs_row("#D97706", "Pendientes de revision", "0")
         body.addWidget(self._qs_amber)
+        # Cuarta tarjeta (azul): maquinas "En Observacion" del turno.
+        # Caso especial: la maquina sigue operativa pero requiere
+        # seguimiento (falla leve, esperando repuesto no critico, etc.).
+        # Por defecto vale 0; el controller la actualiza con
+        # resumen.en_observacion.
+        self._qs_blue = self._build_qs_row("#1E5AA8", "En observacion", "0", dot_class="tagDotBlue")
+        body.addWidget(self._qs_blue)
         self._qs_green = self._build_qs_row("#16A34A", "Resueltas hoy", "0")
         body.addWidget(self._qs_green)
 
@@ -126,7 +133,8 @@ class SearchPanel(QFrame):
         root.addWidget(head)
         root.addWidget(scroll, 1)
 
-    def _build_qs_row(self, color: str, label_text: str, value: str) -> QFrame:
+    def _build_qs_row(self, color: str, label_text: str, value: str, *,
+                      dot_class: str = "") -> QFrame:
         row = QFrame()
         row.setProperty("class", "qsRow")
         h = QHBoxLayout(row)
@@ -139,6 +147,8 @@ class SearchPanel(QFrame):
             dot.setObjectName("tagDotRed")
         elif color == "#D97706":
             dot.setObjectName("tagDotAmber")
+        elif color == "#1E5AA8":
+            dot.setObjectName("tagDotBlue")
         else:
             dot.setObjectName("tagDotGreen")
 
@@ -156,11 +166,14 @@ class SearchPanel(QFrame):
 
     # --- API --------------------------------------------------------------
 
-    def set_quick_stats(self, fds: int, pendientes: int, resueltas: int) -> None:
-        """Actualiza las tres tarjetas del resumen rapido."""
-        for row in (self._qs_red, self._qs_amber, self._qs_green):
-            label = row.findChild(QLabel, "", Qt.FindDirectChildrenOnly)  # noop
-        # Localizar los QLabel con clase qsValue
+    def set_quick_stats(self, fds: int, pendientes: int, resueltas: int,
+                        *, en_observacion: int = 0) -> None:
+        """Actualiza las 4 tarjetas del resumen rapido.
+
+        Orden: FDS, Pendientes, En Observacion, Resueltas.
+        La 4ta tarjeta (``en_observacion``) se incluye siempre aunque
+        valga 0, para que el operador vea que ese caso esta contemplado.
+        """
         def _set(row: QFrame, val: int) -> None:
             for child in row.findChildren(QLabel):
                 if child.property("class") == "qsValue":
@@ -168,6 +181,7 @@ class SearchPanel(QFrame):
                     return
         _set(self._qs_red, fds)
         _set(self._qs_amber, pendientes)
+        _set(self._qs_blue, en_observacion)
         _set(self._qs_green, resueltas)
 
     def set_results(self, maquinas: list[dict]) -> None:
@@ -218,8 +232,26 @@ class SearchPanel(QFrame):
         text_v.addWidget(title)
         text_v.addWidget(sub)
 
+        # Badge de estado: asi una maquina "En Observacion" o FDS no se
+        # confunde con una operativa en la lista del buscador.
+        estado = m.get("estado") or "Operativa"
+        estado_badge = QLabel(estado)
+        estado_badge.setProperty("class", "badge")
+        estado_badge.setProperty("severity", severity_for_estado(estado))
+        estado_badge.setAlignment(Qt.AlignCenter)
+        # Wrap para que sea compacto (alto fijo, ancho contenido)
+        bw = QFrame()
+        bw.setProperty("class", "resultBadgeWrap")
+        bw_lay = QHBoxLayout(bw)
+        bw_lay.setContentsMargins(0, 0, 0, 0)
+        bw_lay.setSpacing(0)
+        bw_lay.addStretch(1)
+        bw_lay.addWidget(estado_badge)
+        bw_lay.addStretch(1)
+
         h.addWidget(num)
         h.addWidget(text, 1)
+        h.addWidget(bw)
 
         item.mousePressEvent = lambda _e, mm=m: self._on_item_clicked(mm)  # type: ignore[assignment]
         return item

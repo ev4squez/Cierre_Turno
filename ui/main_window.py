@@ -179,8 +179,21 @@ class MainWindow(QMainWindow):
         else:
             self._machine_panel.show_machine(m)
 
-    def set_quick_stats(self, *, fds: int, pendientes: int, resueltas: int) -> None:
-        self._search_panel.set_quick_stats(fds, pendientes, resueltas)
+    def set_quick_stats(self, *, fds: int, pendientes: int, resueltas: int,
+                        en_observacion: int = 0) -> None:
+        """Actualiza las tarjetas del resumen rapido.
+
+        Hay 4 contadores: FDS, Pendientes, En Observacion, Resueltas.
+        El parametro ``en_observacion`` es opcional; si se omite o es
+        0, la tarjeta queda visible pero con valor 0 (asi el operador
+        la ve presente y entiende que hay un cuarto caso contemplado).
+        """
+        self._search_panel.set_quick_stats(
+            fds=fds,
+            pendientes=pendientes,
+            resueltas=resueltas,
+            en_observacion=en_observacion,
+        )
 
     def set_tecnicos(self, tecnicos: list[str]) -> None:
         self._form.set_tecnicos(tecnicos)

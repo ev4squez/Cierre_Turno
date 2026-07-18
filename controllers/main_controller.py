@@ -109,7 +109,13 @@ class MainController:
 
     def on_search_query(self, query: str) -> None:
         """Busqueda live del sidebar."""
-        resultados = svc_maq.buscar_maquinas(query, limit=25)
+        # Si no hay query, priorizamos maquinas problematicas (En
+        # Observacion, FDS, etc.) para que el operador las vea al
+        # abrir el sistema sin tipear nada.
+        if not (query or "").strip():
+            resultados = svc_maq.buscar_maquinas_priorizando_problematicas("", limit=25)
+        else:
+            resultados = svc_maq.buscar_maquinas(query, limit=25)
         self.win.set_search_results(resultados)
 
     def on_machine_selected(self, m: dict) -> None:
@@ -407,12 +413,18 @@ class MainController:
 
     def _refrescar_quick_stats(self) -> None:
         resumen = svc_inc.resumen_turno(date.today(), self._turno_actual)
-        # FDS activas en el sistema (catalogo): no necesariamente del turno
-        # Mostramos del turno actual para coherencia.
+        # Desglosamos en 3 contadores en el sidebar:
+        #   - FDS activas (caso rojo)
+        #   - Pendientes (Pendiente Repuesto + Espera Servicio Tecnico)
+        #   - En Observacion (caso especial - la maquina sigue operativa
+        #     pero requiere seguimiento; se reporta en el informe y debe
+        #     estar visible en el resumen rapido)
+        # - Resueltas hoy (Operativas del turno)
         self.win.set_quick_stats(
             fds=resumen.fds,
-            pendientes=resumen.pendientes_repuesto + resumen.en_observacion + resumen.espera_soporte,
+            pendientes=resumen.pendientes_repuesto + resumen.espera_soporte,
             resueltas=resumen.operativas,
+            en_observacion=resumen.en_observacion,
         )
 
     def _refrescar_footer(self) -> None:

@@ -294,6 +294,7 @@ QLabel.qsValue {
 QFrame.tagDotRed    { background-color: #DC2626; border-radius: 4px; min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px; }
 QFrame.tagDotAmber  { background-color: #D97706; border-radius: 4px; min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px; }
 QFrame.tagDotGreen  { background-color: #16A34A; border-radius: 4px; min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px; }
+QFrame.tagDotBlue   { background-color: #1E5AA8; border-radius: 4px; min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px; }
 
 /* ====================== MACHINE HEADER ====================== */
 QLabel.machineBigNum {
