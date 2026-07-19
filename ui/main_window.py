@@ -215,6 +215,13 @@ class MainWindow(QMainWindow):
         self._footer.set_totales(total=total, maquinas=maquinas, pendientes=pendientes)
         self._footer.set_inicio_turno(inicio_turno)
 
+    def set_estado_catalogo(self, *, total: int, operativas: int,
+                             en_observacion: int) -> None:
+        """Contadores del estado actual del parque de maquinas (no del turno)."""
+        self._footer.set_estado_catalogo(
+            total=total, operativas=operativas, en_observacion=en_observacion,
+        )
+
     def set_sending(self, on: bool) -> None:
         self._footer.set_enviando(on)
 

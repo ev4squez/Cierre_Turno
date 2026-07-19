@@ -612,6 +612,13 @@ QLabel.fsValue {
 }
 QLabel.fsValue[accent="true"] { color: #1E5AA8; }
 
+/* Colores custom para stats del footer (sobreescriben accent) */
+QLabel.fsValue[color="green"]      { color: #16A34A; }
+QLabel.fsValue[color="blue"]       { color: #1E5AA8; }
+QLabel.fsValue[color="amber"]      { color: #D97706; }
+QLabel.fsValue[color="red"]        { color: #DC2626; }
+QLabel.fsValue[color="default"]    { color: #1B2430; }
+
 QFrame.footDivider {
     background-color: #E1E6ED;
     min-width: 1px;

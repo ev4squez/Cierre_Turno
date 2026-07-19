@@ -561,6 +561,47 @@ def listar_activas(limit: int = 500) -> list[dict]:
     return buscar_maquinas("", limit=limit)
 
 
+def contar_por_estado(solo_activas: bool = True) -> dict[str, int]:
+    """Cuenta las maquinas del catalogo agrupadas por estado actual.
+
+    A diferencia de ``resumen_turno`` (que mira solo las INCIDENCIAS
+    registradas en el turno actual), esta funcion cuenta el ESTADO
+    REAL de cada maquina en el catalogo. Asi una maquina que quedo
+    "En Observacion" de un turno anterior sigue apareciendo en el
+    contador del dashboard aunque el operador no haya registrado
+    una incidencia hoy.
+
+    Retorna un dict con TODOS los ``ESTADOS_MAQUINA`` como keys
+    (incluso si valen 0), para que la UI pueda mostrar los 5
+    contadores de forma estable.
+
+    Parametros
+    ----------
+    solo_activas:
+        Si True (default), ignora las maquinas en la papelera
+        (``activo=False``). Si False, las incluye en su estado.
+    """
+    from sqlalchemy import func
+
+    with get_session() as s:
+        stmt = select(Maquina.estado, func.count(Maquina.id))
+        if solo_activas:
+            stmt = stmt.where(Maquina.activo.is_(True))
+        stmt = stmt.group_by(Maquina.estado)
+        rows = s.execute(stmt).all()
+
+    # Sembrar todos los estados con 0 asi la UI no pierde keys.
+    counts: dict[str, int] = {estado: 0 for estado in ESTADOS_MAQUINA}
+    for estado, n in rows:
+        # Si el estado guardado no esta en el canon (caso legacy),
+        # lo agregamos igual para no perderlo, pero no pisamos los 0.
+        if estado not in counts:
+            counts[estado] = int(n)
+        else:
+            counts[estado] = int(n)
+    return counts
+
+
 __all__: Iterable[str] = (
     "buscar_maquinas",
     "obtener_por_numero",
@@ -569,9 +610,9 @@ __all__: Iterable[str] = (
     "eliminar_maquina",
     "importar_desde_excel",
     "listar_activas",
+    "contar_por_estado",
     "COLUMNAS_EXCEL",
     "ESTADOS_VALIDOS_EXCEL",
-    "_normalizar_estado",
     "generar_plantilla",
     "HEADER_MASTER",
 )

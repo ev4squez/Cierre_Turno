@@ -412,19 +412,53 @@ class MainController:
         self.win.set_table_rows(registros)
 
     def _refrescar_quick_stats(self) -> None:
+        """Actualiza el dashboard KPI con el estado REAL del catalogo.
+
+        Cambio conceptual: las 4 cards ahora cuentan el ESTADO de cada
+        maquina en el catalogo (no las incidencias del turno). Asi
+        una maquina "En Observacion" sigue visible aunque no se haya
+        registrado una incidencia hoy. Esto es lo que el operador
+        espera ver: el estado actual del parque de maquinas.
+
+        Fuentes:
+          * ``services.maquinas.contar_por_estado`` para el desglose
+            por estado (Operativa / FDS / Pend Rep / Esp Tecnico /
+            En Observacion).
+          * ``services.incidencias.resumen_turno`` para contar las
+            Operativas RESUELTAS en el turno actual (caso verde:
+            "Resueltas hoy" sigue siendo metric de productividad
+            del turno, no del catalogo).
+        """
+        from services import maquinas as svc_maq
+
+        # Conteos por estado del catalogo (incluye TODAS las activas).
+        catalogo = svc_maq.contar_por_estado(solo_activas=True)
+
+        fds = catalogo.get("Fuera de Servicio", 0)
+        pendientes = (
+            catalogo.get("Pendiente Repuesto", 0)
+            + catalogo.get("Espera Servicio Tecnico", 0)
+        )
+        en_observacion = catalogo.get("En Observacion", 0)
+        operativas = catalogo.get("Operativa", 0)
+        total_maquinas = sum(catalogo.values())
+
+        # "Resueltas hoy" sigue siendo una metrica del turno:
+        # las incidencias Operativas registradas en este turno.
         resumen = svc_inc.resumen_turno(date.today(), self._turno_actual)
-        # Desglosamos en 3 contadores en el sidebar:
-        #   - FDS activas (caso rojo)
-        #   - Pendientes (Pendiente Repuesto + Espera Servicio Tecnico)
-        #   - En Observacion (caso especial - la maquina sigue operativa
-        #     pero requiere seguimiento; se reporta en el informe y debe
-        #     estar visible en el resumen rapido)
-        # - Resueltas hoy (Operativas del turno)
+        resueltas = resumen.operativas
+
         self.win.set_quick_stats(
-            fds=resumen.fds,
-            pendientes=resumen.pendientes_repuesto + resumen.espera_soporte,
-            resueltas=resumen.operativas,
-            en_observacion=resumen.en_observacion,
+            fds=fds,
+            pendientes=pendientes,
+            resueltas=resueltas,
+            en_observacion=en_observacion,
+        )
+        # Tambien actualizamos el footer con los contadores del catalogo.
+        self.win.set_estado_catalogo(
+            total=total_maquinas,
+            operativas=operativas,
+            en_observacion=en_observacion,
         )
 
     def _refrescar_footer(self) -> None:
