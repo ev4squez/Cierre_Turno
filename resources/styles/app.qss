@@ -123,6 +123,38 @@ QFrame#userChip {
     max-height: 36px;
 }
 
+/* Indicador de Outlook en el topbar (chip con dot) */
+QFrame#outlookChip {
+    background-color: #FFFFFF;
+    border: 1px solid #E1E6ED;
+    border-radius: 17px;
+    padding: 0 4px;
+    min-height: 32px;
+    max-height: 32px;
+}
+QFrame#outlookChip[status="ok"] {
+    border-color: #16A34A;
+    background-color: #F0FDF4;
+}
+QFrame#outlookChip[status="ko"] {
+    border-color: #DC2626;
+    background-color: #FEF2F2;
+}
+QLabel#outlookDot {
+    border-radius: 4px;
+    min-width: 8px; max-width: 8px;
+    min-height: 8px; max-height: 8px;
+}
+QLabel#outlookDot[status="ok"]  { background-color: #16A34A; }
+QLabel#outlookDot[status="ko"]  { background-color: #DC2626; }
+QLabel#outlookText {
+    color: #1B2430;
+    font-size: 12px;
+    font-weight: 600;
+}
+QFrame#outlookChip[status="ko"] QLabel#outlookText { color: #B91C1C; }
+
+
 QLabel#userAvatar {
     background-color: #EAF1FB;
     color: #1E5AA8;
@@ -527,6 +559,21 @@ QFrame.bottomPanel {
     border: 1px solid #E1E6ED;
     border-radius: 12px;
     min-height: 260px;
+}
+
+/* Barra de filtros (toggle del boton Filtrar en la tabla) */
+QFrame.filtersBar {
+    background-color: #F8FAFC;
+    border-bottom: 1px solid #E1E6ED;
+}
+QFrame.filtersBar QLabel {
+    color: #64748B;
+    font-size: 12px;
+    font-weight: 600;
+}
+QFrame.filtersBar QComboBox {
+    min-width: 130px;
+    padding: 4px 8px;
 }
 
 QLabel.countBadge {

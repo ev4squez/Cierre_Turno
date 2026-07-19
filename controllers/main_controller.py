@@ -359,6 +359,78 @@ class MainController:
                 f"{resultado.get('mensaje','')}\n\nArchivo guardado en:\n{archivo}",
             )
 
+    def on_previsualizar_informe(self) -> None:
+        """Muestra el HTML renderizado del informe en un dialog modal.
+
+        No envia nada: solo deja revisar destinatarios, asunto y
+        contenido. Si el operador quiere enviar, tiene que cerrar este
+        dialog y apretar 'Enviar Informe por Outlook' en el header de
+        la tabla (que dispara el flujo normal con confirmacion de
+        firmante).
+        """
+        cfg = svc_cfg.obtener()
+        hoy = date.today()
+        resumen = svc_inc.resumen_turno(hoy, self._turno_actual)
+        registros = self._enriquecer_registros(list(resumen.registros))
+        resumen.registros = registros
+
+        correo_cfg = cfg.get("correo", {})
+        destinatarios = list(correo_cfg.get("destinatarios", []) or [])
+        cc = list(correo_cfg.get("cc", []) or [])
+        asunto_tpl = correo_cfg.get(
+            "asunto_template", "Informe Diario FDS - {fecha} - {turno}"
+        )
+        logo_path = cfg.get("empresa", {}).get("logo_path") or None
+        turno_cfg = cfg.get("turno", {}).get(self._turno_actual.lower(), {})
+        rango = turno_cfg.get("rango", "")
+        etiqueta = turno_cfg.get("etiqueta", self._turno_actual)
+
+        from services.email_renderer import render_informe
+        from services.incidencias import (
+            tiempo_promedio_resolucion_min, total_maquinas_catalogo,
+        )
+        tiempo_real = tiempo_promedio_resolucion_min(registros)
+        total_maquinas = total_maquinas_catalogo(solo_activas=True)
+        # Para preview usamos el usuario actual o "Preview" como fallback
+        firmante_preview = ""
+        try:
+            from services import tecnicos_db
+            actual = tecnicos_db.obtener_usuario_actual()
+            if actual is not None:
+                firmante_preview = actual["nombre"]
+        except Exception:
+            pass
+        if not firmante_preview:
+            firmante_preview = self._obtener_usuario_actual() or "Preview"
+
+        html = render_informe(
+            fecha=hoy,
+            turno_etiqueta=etiqueta,
+            turno_rango=rango,
+            usuario=firmante_preview,
+            registros=registros,
+            tiempo_promedio_min=tiempo_real,
+            empresa=cfg.get("empresa"),
+            destinatarios=destinatarios,
+            cc=cc,
+            firmante=firmante_preview,
+            total_maquinas_catalogo=total_maquinas,
+        )
+        # Calcular el asunto igual que haria enviar_informe_turno
+        from services.outlook import armar_asunto
+        asunto = armar_asunto(asunto_tpl, fecha=hoy, turno=etiqueta)
+
+        from ui.preview_dialog import PreviewDialog
+        dlg = PreviewDialog(
+            parent=self.win,
+            html=html,
+            asunto=asunto,
+            destinatarios=destinatarios,
+            cc=cc,
+            total_registros=resumen.total,
+        )
+        dlg.exec()
+
     def on_settings(self) -> None:
         """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas,
         Tecnicos, Tipos de problema).
@@ -497,6 +569,31 @@ class MainController:
         etc. lo llaman); es intencional que sea no-op.
         """
 
+    def _refrescar_outlook_status(self) -> None:
+        """Chequea si Outlook esta disponible y actualiza el dot del topbar.
+
+        El chequeo es best-effort: si falla (ej. pywin32 no instalado
+        o Outlook no responde), marcamos como no disponible. Asi el
+        operador sabe de antemano que el informe se guardara como
+        archivo .eml/.html en vez de mandarse directamente.
+        """
+        try:
+            disponible = svc_outlook.outlook_disponible()
+        except Exception as e:
+            disponible = False
+            msg = f"Error al chequear Outlook: {e}"
+            self.win.set_outlook_status(False, msg)
+            return
+        if disponible:
+            self.win.set_outlook_status(
+                True, "Outlook detectado - listo para enviar"
+            )
+        else:
+            self.win.set_outlook_status(
+                False,
+                "Outlook no disponible - el informe se guardara como archivo"
+            )
+
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
@@ -541,9 +638,13 @@ class MainController:
         self.win.editarIncidencia.connect(self.on_editar_incidencia)
         self.win.eliminarIncidencia.connect(self.on_eliminar_incidencia)
         self.win.enviarInformeRequested.connect(self.on_enviar_informe)
+        self.win.previsualizarInformeRequested.connect(self.on_previsualizar_informe)
         self.win.settingsRequested.connect(self.on_settings)
         self.win.logoutRequested.connect(self.on_logout)
         self.win.importRequested.connect(self.on_import)
+
+        # Chequeo inicial de Outlook: refresca el indicador del topbar.
+        self._refrescar_outlook_status()
 
 
 __all__ = ("MainController",)

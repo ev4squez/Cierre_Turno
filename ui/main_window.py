@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
     settingsRequested = Signal()
     logoutRequested = Signal()
     enviarInformeRequested = Signal()
+    previsualizarInformeRequested = Signal()
     searchQueryChanged = Signal(str)
     machineSelected = Signal(dict)
     guardarIncidencia = Signal(dict)
@@ -130,6 +131,7 @@ class MainWindow(QMainWindow):
         self._table.eliminar.connect(self.eliminarIncidencia.emit)
         # El boton 'Enviar Informe' ahora vive en el header de la tabla.
         self._table.enviarInformeClicked.connect(self.enviarInformeRequested.emit)
+        self._table.previsualizarClicked.connect(self.previsualizarInformeRequested.emit)
 
     def _on_machine_selected(self, m: dict) -> None:
         """Slot interno: propaga la seleccion al panel central y al form."""
@@ -235,6 +237,10 @@ class MainWindow(QMainWindow):
 
     def set_topbar_usuario(self, nombre: str, rol: str) -> None:
         self._topbar.set_usuario(nombre, rol)
+
+    def set_outlook_status(self, disponible: bool, mensaje: str = "") -> None:
+        """Actualiza el indicador de Outlook en el topbar."""
+        self._topbar.set_outlook_status(disponible, mensaje)
 
     def set_form_machine(self, m: dict | None) -> None:
         self._form.set_machine(m)

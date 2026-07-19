@@ -142,6 +142,22 @@ class TopBar(QFrame):
         user_layout.addWidget(self._avatar)
         user_layout.addLayout(user_text)
 
+        # Indicador de Outlook (chip con dot + texto "Outlook").
+        # El controller lo refresca via set_outlook_status() segun
+        # el resultado de services.outlook.outlook_disponible().
+        self._outlook_chip = QFrame()
+        self._outlook_chip.setObjectName("outlookChip")
+        oc_layout = QHBoxLayout(self._outlook_chip)
+        oc_layout.setContentsMargins(8, 0, 10, 0)
+        oc_layout.setSpacing(6)
+        self._outlook_dot = QLabel()
+        self._outlook_dot.setObjectName("outlookDot")
+        self._outlook_dot.setFixedSize(8, 8)
+        self._outlook_text = QLabel("Outlook")
+        self._outlook_text.setObjectName("outlookText")
+        oc_layout.addWidget(self._outlook_dot)
+        oc_layout.addWidget(self._outlook_text)
+
         # Botones
         btn_import = QPushButton()
         btn_import.setObjectName("btnIconOnly")
@@ -179,6 +195,9 @@ class TopBar(QFrame):
         layout.addWidget(top_info)
         layout.addSpacing(6)
         layout.addWidget(user_chip)
+        layout.addSpacing(4)
+        layout.addWidget(self._outlook_chip)
+        layout.addSpacing(4)
         layout.addWidget(btn_import)
         layout.addWidget(btn_settings)
         layout.addWidget(btn_logout)
@@ -195,3 +214,33 @@ class TopBar(QFrame):
         self._user_name.setText(nombre)
         self._user_role.setText(rol)
         self._avatar.setText(initials(nombre))
+
+    def set_outlook_status(self, disponible: bool, mensaje: str = "") -> None:
+        """Cambia el indicador de Outlook del topbar.
+
+        Parametros
+        ----------
+        disponible:
+            True si Outlook esta accesible, False si no.
+        mensaje:
+            Texto opcional que aparece como tooltip al pasar el mouse
+            (ej: 'Outlook 2019 detectado' o 'win32com no disponible').
+        """
+        self._outlook_chip.setProperty("status",
+                                        "ok" if disponible else "ko")
+        self._outlook_dot.setProperty("status",
+                                      "ok" if disponible else "ko")
+        self._outlook_chip.style().unpolish(self._outlook_chip)
+        self._outlook_chip.style().polish(self._outlook_chip)
+        self._outlook_dot.style().unpolish(self._outlook_dot)
+        self._outlook_dot.style().polish(self._outlook_dot)
+        self._outlook_text.setText("Outlook" if disponible else "Sin Outlook")
+        if mensaje:
+            self._outlook_chip.setToolTip(mensaje)
+            self._outlook_dot.setToolTip(mensaje)
+        else:
+            self._outlook_chip.setToolTip(
+                "Outlook listo para enviar" if disponible
+                else "Outlook no detectado - el informe se guardara como archivo"
+            )
+            self._outlook_dot.setToolTip(self._outlook_chip.toolTip())

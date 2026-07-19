@@ -115,6 +115,24 @@
   .user-chip .u-name{ font-size:13px; font-weight:600; color: var(--text-main); line-height:1.1;}
   .user-chip .u-role{ font-size:11px; color: var(--text-mute); line-height:1.1; margin-top:1px;}
 
+  /* Indicador de Outlook en el topbar */
+  .outlook-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 12px 4px 8px;
+    border-radius: 999px;
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    font-size:12px; font-weight:600;
+    color: var(--text-main);
+  }
+  .outlook-chip.ok  { border-color: var(--green); background: #F0FDF4; }
+  .outlook-chip.ko  { border-color: var(--red);   background: #FEF2F2; color: #B91C1C; }
+  .outlook-chip .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: var(--green);
+  }
+  .outlook-chip.ko .dot{ background: var(--red); }
+
   .btn{
     border:none; cursor:pointer; font-family:inherit;
     display:inline-flex; align-items:center; gap:8px;
@@ -544,6 +562,10 @@
         <div class="u-name">Elvis M.</div>
         <div class="u-role">Operador de sala</div>
       </div>
+    </div>
+    <div class="outlook-chip ok" title="Outlook listo para enviar">
+      <span class="dot"></span>
+      Outlook
     </div>
     <button class="btn btn-icon-only" title="Configuración">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.6 1.6 0 0 0-1.5 1z"/></svg>
