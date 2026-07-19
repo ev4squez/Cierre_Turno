@@ -160,10 +160,11 @@
     width: 4px;
     background: var(--blue);
   }
-  .kpi-card.k-red::before   { background: var(--red); }
-  .kpi-card.k-amber::before { background: var(--amber); }
-  .kpi-card.k-blue::before  { background: var(--blue); }
-  .kpi-card.k-green::before { background: var(--green); }
+  .kpi-card.k-red::before    { background: var(--red); }
+  .kpi-card.k-amber::before  { background: var(--amber); }
+  .kpi-card.k-blue::before   { background: var(--blue); }
+  .kpi-card.k-green::before  { background: var(--green); }
+  .kpi-card.k-dark::before   { background: #475569; } /* slate-600 */
 
   .kpi-icon{
     width:42px; height:42px;
@@ -175,6 +176,7 @@
   .kpi-card.k-amber .kpi-icon{ background: var(--amber-tint); color: var(--amber); }
   .kpi-card.k-blue  .kpi-icon{ background: var(--blue-tint);  color: var(--blue); }
   .kpi-card.k-green .kpi-icon{ background: var(--green-tint); color: var(--green); }
+  .kpi-card.k-dark  .kpi-icon{ background: #F1F5F9;           color: #475569; }
 
   .kpi-text{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
   .kpi-label{
@@ -545,34 +547,24 @@
   </div>
 
   <!-- ===================== DASHBOARD BAR (KPI) ===================== -->
+  <!--
+    Distribucion de las 4 cards (estado actual del catalogo):
+      1. TOTAL MAQUINAS   - gris/azul oscuro  (cantidad total del parque)
+      2. OPERATIVAS        - verde             (maquinas operativas ahora)
+      3. EN OBSERVACION    - azul              (maquinas en seguimiento)
+      4. PENDIENTES        - amber             (FDS + Pend Rep + Esp Tecnico)
+    Esto refleja el ESTADO ACTUAL del parque, no las incidencias del turno.
+    "Pendientes" incluye FDS / Pend Repuesto / Espera Servicio Tecnico
+    (los 3 estados problematicos que requieren accion).
+  -->
   <div class="dashboard-bar">
-    <div class="kpi-card k-red">
+    <div class="kpi-card k-dark">
       <div class="kpi-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
       </div>
       <div class="kpi-text">
-        <span class="kpi-label">FDS activas</span>
-        <span class="kpi-value">6</span>
-      </div>
-    </div>
-
-    <div class="kpi-card k-amber">
-      <div class="kpi-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-      </div>
-      <div class="kpi-text">
-        <span class="kpi-label">Pendientes</span>
-        <span class="kpi-value">2</span>
-      </div>
-    </div>
-
-    <div class="kpi-card k-blue">
-      <div class="kpi-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/></svg>
-      </div>
-      <div class="kpi-text">
-        <span class="kpi-label">En observación</span>
-        <span class="kpi-value zero">0</span>
+        <span class="kpi-label">Total maquinas</span>
+        <span class="kpi-value">238</span>
       </div>
     </div>
 
@@ -581,8 +573,28 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4 12 14.01l-3-3"/></svg>
       </div>
       <div class="kpi-text">
-        <span class="kpi-label">Resueltas hoy</span>
-        <span class="kpi-value">9</span>
+        <span class="kpi-label">Operativas</span>
+        <span class="kpi-value">221</span>
+      </div>
+    </div>
+
+    <div class="kpi-card k-blue">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12z"/></svg>
+      </div>
+      <div class="kpi-text">
+        <span class="kpi-label">En observacion</span>
+        <span class="kpi-value">4</span>
+      </div>
+    </div>
+
+    <div class="kpi-card k-amber">
+      <div class="kpi-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+      </div>
+      <div class="kpi-text">
+        <span class="kpi-label">Pendientes</span>
+        <span class="kpi-value">13</span>
       </div>
     </div>
   </div>

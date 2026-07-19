@@ -184,9 +184,49 @@ class MainWindow(QMainWindow):
         else:
             self._machine_panel.show_machine(m)
 
+    def set_estado_catalogo(self, *, total: int, operativas: int,
+                             en_observacion: int, pendientes: int) -> None:
+        """Actualiza las 4 cards KPI del dashboard top Y el footer con
+        el estado actual del catalogo de maquinas.
+
+        Es la API principal para refrescar el resumen visual. La usan:
+          - controllers/main_controller._refrescar_quick_stats
+          - settings (cuando se importa un Excel nuevo)
+          - el smoke test
+
+        Cards del dashboard:
+          - Total maquinas   (slate)
+          - Operativas       (verde)
+          - En observacion   (azul)
+          - Pendientes       (amber: FDS + Pend Rep + Esp Tec)
+
+        Footer (separado por divisor fuerte):
+          - TOTAL MAQUINAS, OPERATIVAS, EN OBSERVACION
+        """
+        # Dashboard (4 cards grandes arriba)
+        self._dashboard.set_estado_catalogo(
+            total=total,
+            operativas=operativas,
+            en_observacion=en_observacion,
+            pendientes=pendientes,
+        )
+        # Footer (3 stats del estado del catalogo, separadas de las del turno)
+        self._footer.set_estado_catalogo(
+            total=total,
+            operativas=operativas,
+            en_observacion=en_observacion,
+        )
+
     def set_quick_stats(self, *, fds: int, pendientes: int, resueltas: int,
                         en_observacion: int = 0) -> None:
-        """Actualiza las cards KPI del dashboard top."""
+        """Compat con la firma anterior. Internamente usa set_estado_catalogo.
+
+        ``resueltas`` (metrica del turno) ya no se refleja en el dashboard;
+        vive en el footer. ``fds`` se descarta: el dashboard cuenta
+        "Pendientes" agregado (no solo FDS).
+        """
+        # Sin dato de total aqui, el caller deberia usar set_estado_catalogo
+        # directamente. Dejamos total en 0 como placeholder visible.
         self._dashboard.set_quick_stats(
             fds=fds,
             pendientes=pendientes,
@@ -214,13 +254,6 @@ class MainWindow(QMainWindow):
     def set_footer(self, *, total: int, maquinas: int, pendientes: int, inicio_turno: str) -> None:
         self._footer.set_totales(total=total, maquinas=maquinas, pendientes=pendientes)
         self._footer.set_inicio_turno(inicio_turno)
-
-    def set_estado_catalogo(self, *, total: int, operativas: int,
-                             en_observacion: int) -> None:
-        """Contadores del estado actual del parque de maquinas (no del turno)."""
-        self._footer.set_estado_catalogo(
-            total=total, operativas=operativas, en_observacion=en_observacion,
-        )
 
     def set_sending(self, on: bool) -> None:
         self._footer.set_enviando(on)

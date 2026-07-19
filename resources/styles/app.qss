@@ -257,12 +257,14 @@ QFrame.kpiCard[kpiColor="red"]   QLabel#kpiIcon { background-color: #FDECEC; col
 QFrame.kpiCard[kpiColor="amber"] QLabel#kpiIcon { background-color: #FDF3E4; color: #D97706; border-radius: 10px; }
 QFrame.kpiCard[kpiColor="blue"]  QLabel#kpiIcon { background-color: #EAF1FB; color: #1E5AA8; border-radius: 10px; }
 QFrame.kpiCard[kpiColor="green"] QLabel#kpiIcon { background-color: #E7F7EC; color: #16A34A; border-radius: 10px; }
+QFrame.kpiCard[kpiColor="dark"]  QLabel#kpiIcon { background-color: #F1F5F9; color: #475569; border-radius: 10px; }
 
 /* Barra de color lateral (4px) por KPI */
 QFrame.kpiCard[kpiColor="red"]   { border-left: 4px solid #DC2626; }
 QFrame.kpiCard[kpiColor="amber"] { border-left: 4px solid #D97706; }
 QFrame.kpiCard[kpiColor="blue"]  { border-left: 4px solid #1E5AA8; }
 QFrame.kpiCard[kpiColor="green"] { border-left: 4px solid #16A34A; }
+QFrame.kpiCard[kpiColor="dark"]  { border-left: 4px solid #475569; }
 
 QLabel#kpiLabel {
     color: #94A3B8;

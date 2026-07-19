@@ -412,53 +412,48 @@ class MainController:
         self.win.set_table_rows(registros)
 
     def _refrescar_quick_stats(self) -> None:
-        """Actualiza el dashboard KPI con el estado REAL del catalogo.
+        """Actualiza el dashboard KPI + footer con el estado REAL del catalogo.
 
-        Cambio conceptual: las 4 cards ahora cuentan el ESTADO de cada
-        maquina en el catalogo (no las incidencias del turno). Asi
-        una maquina "En Observacion" sigue visible aunque no se haya
-        registrado una incidencia hoy. Esto es lo que el operador
-        espera ver: el estado actual del parque de maquinas.
+        Las 4 cards del dashboard cuentan el ESTADO de cada maquina en
+        el catalogo (no las incidencias del turno). Asi una maquina
+        "En Observacion" sigue visible aunque no se haya registrado
+        una incidencia hoy.
 
-        Fuentes:
+        Cards (de izquierda a derecha):
+          - TOTAL MAQUINAS   - slate   (cantidad del parque)
+          - OPERATIVAS        - verde   (maquinas operativas ahora)
+          - EN OBSERVACION    - azul    (maquinas en seguimiento)
+          - PENDIENTES        - amber   (FDS + Pend Rep + Esp Tecnico)
+
+        El footer recibe los mismos contadores del catalogo en su
+        seccion propia (TOTAL MAQUINAS / OPERATIVAS / EN OBSERVACION),
+        separada de los stats del turno por un divisor fuerte.
+
+        Fuente:
           * ``services.maquinas.contar_por_estado`` para el desglose
             por estado (Operativa / FDS / Pend Rep / Esp Tecnico /
             En Observacion).
-          * ``services.incidencias.resumen_turno`` para contar las
-            Operativas RESUELTAS en el turno actual (caso verde:
-            "Resueltas hoy" sigue siendo metric de productividad
-            del turno, no del catalogo).
         """
         from services import maquinas as svc_maq
 
         # Conteos por estado del catalogo (incluye TODAS las activas).
         catalogo = svc_maq.contar_por_estado(solo_activas=True)
 
-        fds = catalogo.get("Fuera de Servicio", 0)
+        total_maquinas = sum(catalogo.values())
+        operativas = catalogo.get("Operativa", 0)
+        en_observacion = catalogo.get("En Observacion", 0)
         pendientes = (
-            catalogo.get("Pendiente Repuesto", 0)
+            catalogo.get("Fuera de Servicio", 0)
+            + catalogo.get("Pendiente Repuesto", 0)
             + catalogo.get("Espera Servicio Tecnico", 0)
         )
-        en_observacion = catalogo.get("En Observacion", 0)
-        operativas = catalogo.get("Operativa", 0)
-        total_maquinas = sum(catalogo.values())
 
-        # "Resueltas hoy" sigue siendo una metrica del turno:
-        # las incidencias Operativas registradas en este turno.
-        resumen = svc_inc.resumen_turno(date.today(), self._turno_actual)
-        resueltas = resumen.operativas
-
-        self.win.set_quick_stats(
-            fds=fds,
-            pendientes=pendientes,
-            resueltas=resueltas,
-            en_observacion=en_observacion,
-        )
-        # Tambien actualizamos el footer con los contadores del catalogo.
+        # Llamada unica: la MainWindow reparte al dashboard Y al footer.
         self.win.set_estado_catalogo(
             total=total_maquinas,
             operativas=operativas,
             en_observacion=en_observacion,
+            pendientes=pendientes,
         )
 
     def _refrescar_footer(self) -> None:
