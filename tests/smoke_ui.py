@@ -175,10 +175,17 @@ def main() -> int:
               f"rows = {w._table._tabla.rowCount()}")
 
     section("5. Footer")
-    w.set_footer(total=1, maquinas=1, pendientes=0, inicio_turno="14:00")
+    w.set_estado_catalogo(total=10, operativas=8, en_observacion=1, pendientes=1)
     app.processEvents()
-    check("footer total = 1",
-          w._footer._total["value"].text() == "1")
+    check("footer total maquinas = 10",
+          w._footer._total_maquinas["value"].text() == "10",
+          f"value={w._footer._total_maquinas['value'].text()!r}")
+    check("footer operativas = 8",
+          w._footer._operativas["value"].text() == "8",
+          f"value={w._footer._operativas['value'].text()!r}")
+    check("footer en observacion = 1",
+          w._footer._en_obs["value"].text() == "1",
+          f"value={w._footer._en_obs['value'].text()!r}")
 
     section("6. Editar / Eliminar senales conectadas")
     editados: list[int] = []

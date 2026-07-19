@@ -1,4 +1,14 @@
-"""Footer con totales + boton Enviar Informe."""
+"""Footer con stats del catalogo + boton Enviar Informe.
+
+Layout limpio: a la izquierda los 3 contadores del estado actual del
+parque de maquinas (los mismos que el dashboard, repetidos aca para
+que el operador los tenga a la vista mientras arma el informe), y
+el boton "Enviar Informe por Outlook" a la derecha.
+
+Los stats del turno (Total Incidencias / Maquinas Registradas /
+Hora de Inicio / Pendientes) se quitaron porque vivian duplicados
+con el dashboard y resultaban ruido visual.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +28,7 @@ from ui.helpers import svg
 
 
 class Footer(QFrame):
-    """Pie con totales y boton de envio."""
+    """Pie con stats del catalogo + boton de envio."""
 
     enviarInforme = Signal()
 
@@ -26,35 +36,13 @@ class Footer(QFrame):
         super().__init__(parent)
         self.setObjectName("footer")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setMinimumHeight(68)
+        self.setMinimumHeight(64)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(20, 0, 20, 0)
-        layout.setSpacing(22)
+        layout.setSpacing(24)
 
-        # Stats del TURNO (izquierda)
-        self._total = self._stat("TOTAL DE INCIDENCIAS", "0")
-        layout.addWidget(self._total["host"])
-        layout.addWidget(self._divider())
-        self._maquinas = self._stat("MAQUINAS REGISTRADAS", "0")
-        layout.addWidget(self._maquinas["host"])
-        layout.addWidget(self._divider())
-        self._inicio = self._stat("HORA DE INICIO DEL TURNO", "14:00")
-        layout.addWidget(self._inicio["host"])
-        layout.addWidget(self._divider())
-        self._pendientes = self._stat("PENDIENTES", "0", accent=True)
-        layout.addWidget(self._pendientes["host"])
-
-        # Separador mas ancho entre los stats del turno y los del catalogo
-        layout.addSpacing(12)
-        div2 = QFrame()
-        div2.setProperty("class", "footDividerStrong")
-        div2.setFixedSize(1, 32)
-        div2.setStyleSheet("background-color: #CBD5E1;")
-        layout.addWidget(div2)
-        layout.addSpacing(12)
-
-        # Stats del CATALOGO (centro) - estado actual del parque de maquinas
+        # Stats del CATALOGO (izquierda) - estado actual del parque
         self._total_maquinas = self._stat("TOTAL MAQUINAS", "0")
         layout.addWidget(self._total_maquinas["host"])
         layout.addWidget(self._divider())
@@ -73,8 +61,7 @@ class Footer(QFrame):
         self._btn.clicked.connect(self.enviarInforme.emit)
         layout.addWidget(self._btn)
 
-    def _stat(self, label: str, value: str, *, accent: bool = False,
-              color: str | None = None) -> dict:
+    def _stat(self, label: str, value: str, *, color: str | None = None) -> dict:
         host = QFrame()
         v = QVBoxLayout(host)
         v.setContentsMargins(0, 0, 0, 0)
@@ -83,15 +70,11 @@ class Footer(QFrame):
         l.setProperty("class", "fsLabel")
         val = QLabel(value)
         val.setProperty("class", "fsValue")
-        # Compat: `accent` mantiene el azul por defecto (legado).
-        # `color` permite sobrescribir: "green" para Operativas,
-        # "blue" para En Observacion.
+        # Color custom del valor (green / blue / amber / red / accent).
         if color:
             val.setProperty("color", color)
-            val.setProperty("accent", "false")
         else:
-            val.setProperty("color", "accent" if accent else "default")
-            val.setProperty("accent", "true" if accent else "false")
+            val.setProperty("color", "default")
         v.addWidget(l)
         v.addWidget(val)
         return {"host": host, "value": val}
@@ -104,20 +87,12 @@ class Footer(QFrame):
 
     # --- API --------------------------------------------------------------
 
-    def set_totales(self, *, total: int, maquinas: int, pendientes: int) -> None:
-        self._total["value"].setText(str(total))
-        self._maquinas["value"].setText(str(maquinas))
-        self._pendientes["value"].setText(str(pendientes))
-
-    def set_inicio_turno(self, hora: str) -> None:
-        self._inicio["value"].setText(hora)
-
     def set_estado_catalogo(self, *, total: int, operativas: int,
                             en_observacion: int) -> None:
         """Actualiza los contadores del estado actual del catalogo.
 
-        Estos valores NO son del turno: reflejan el estado REAL de cada
-        maquina en el parque. Asi el operador ve si hay maquinas en
+        Reflejan el estado REAL de cada maquina en el parque, no las
+        incidencias del turno. Asi el operador ve si hay maquinas en
         observacion que arrastran de turnos anteriores.
         """
         self._total_maquinas["value"].setText(str(total))

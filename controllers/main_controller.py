@@ -457,19 +457,16 @@ class MainController:
         )
 
     def _refrescar_footer(self) -> None:
-        resumen = svc_inc.resumen_turno(date.today(), self._turno_actual)
-        maquinas_unicas = len({r["numero_maquina"] for r in resumen.registros})
-        cfg = svc_cfg.obtener()
-        turno_cfg = cfg.get("turno", {}).get(self._turno_actual.lower(), {})
-        # Hora de inicio del turno: el primer valor del rango
-        inicio = (turno_cfg.get("rango") or "14:00-22:00").split("-")[0].strip() or "14:00"
-        pendientes = resumen.fds + resumen.pendientes_repuesto + resumen.espera_soporte + resumen.en_observacion
-        self.win.set_footer(
-            total=resumen.total,
-            maquinas=maquinas_unicas,
-            pendientes=pendientes,
-            inicio_turno=inicio,
-        )
+        """No-op: el footer ya no tiene stats del turno (solo del catalogo).
+
+        Los unicos stats que quedan en el footer son TOTAL MAQUINAS /
+        OPERATIVAS / EN OBSERVACION, que se actualizan via
+        ``set_estado_catalogo`` desde ``_refrescar_quick_stats``.
+
+        Mantenemos el metodo por backward compat con el call-graph del
+        controller (start, registrar_incidencia, eliminar_incidencia,
+        etc. lo llaman); es intencional que sea no-op.
+        """
 
     # ------------------------------------------------------------------
     # Helpers

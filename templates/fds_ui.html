@@ -855,25 +855,28 @@
   </div>
 
   <!-- ===================== FOOTER ===================== -->
+  <!--
+    Footer limpio: solo stats del catalogo a la izquierda (duplicados en el
+    dashboard pero quedan visibles mientras el operador arma el informe) y
+    el boton de envio a la derecha.
+    Los stats del TURNO (Total Incidencias / Maquinas Registradas / Hora
+    Inicio / Pendientes) se quitaron porque ya viven en el dashboard KPI
+    y mantener los dos era ruido visual.
+  -->
   <div class="footer">
     <div class="foot-stat">
-      <span class="fs-label">Total de incidencias</span>
-      <span class="fs-value">3</span>
+      <span class="fs-label">Total maquinas</span>
+      <span class="fs-value">238</span>
     </div>
     <div class="foot-divider"></div>
     <div class="foot-stat">
-      <span class="fs-label">Máquinas registradas</span>
-      <span class="fs-value">3</span>
+      <span class="fs-label">Operativas</span>
+      <span class="fs-value" style="color: var(--green);">221</span>
     </div>
     <div class="foot-divider"></div>
     <div class="foot-stat">
-      <span class="fs-label">Hora de inicio del turno</span>
-      <span class="fs-value">14:00</span>
-    </div>
-    <div class="foot-divider"></div>
-    <div class="foot-stat">
-      <span class="fs-label">Pendientes</span>
-      <span class="fs-value accent">2</span>
+      <span class="fs-label">En observacion</span>
+      <span class="fs-value" style="color: var(--blue);">4</span>
     </div>
     <div class="footer-spacer"></div>
     <button class="btn btn-report">

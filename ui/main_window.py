@@ -251,10 +251,6 @@ class MainWindow(QMainWindow):
     def set_table_rows(self, rows: list[dict]) -> None:
         self._table.set_rows(rows)
 
-    def set_footer(self, *, total: int, maquinas: int, pendientes: int, inicio_turno: str) -> None:
-        self._footer.set_totales(total=total, maquinas=maquinas, pendientes=pendientes)
-        self._footer.set_inicio_turno(inicio_turno)
-
     def set_sending(self, on: bool) -> None:
         self._footer.set_enviando(on)
 
