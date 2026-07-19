@@ -28,14 +28,21 @@ COLS = ["Hora", "Maquina", "Sector", "Marca", "Problema", "Estado", "Tecnico", "
 class BottomTablePanel(QFrame):
     """Tabla de incidencias del turno + acciones por fila.
 
+    El header de la tabla ahora incluye el boton 'Enviar Informe por
+    Outlook' (antes vivia en el footer). Asi la accion principal del
+    cierre de turno queda visible justo arriba de las incidencias que
+    va a enviar.
+
     Signals
     -------
-    editar(int):    id de la incidencia a editar
-    eliminar(int):  id de la incidencia a eliminar
+    editar(int):            id de la incidencia a editar
+    eliminar(int):          id de la incidencia a eliminar
+    enviarInformeClicked(): cuando el operador aprieta 'Enviar Informe'
     """
 
     editar = Signal(int)
     eliminar = Signal(int)
+    enviarInformeClicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -60,13 +67,25 @@ class BottomTablePanel(QFrame):
         h.addWidget(self._count_badge)
         h.addStretch(1)
 
-        # Filtros (placeholder)
+        # Acciones del header: Filtrar (placeholder) + Enviar Informe.
+        # El boton 'Filtrar' queda disabled porque todavia no esta
+        # implementado, pero dejamos el slot visible para consistencia
+        # con el HTML de referencia.
         btn_filter = QPushButton("  Filtrar")
         btn_filter.setObjectName("btnGhost")
         btn_filter.setIcon(svg("filter", 15))
         btn_filter.setCursor(Qt.PointingHandCursor)
-        btn_filter.setEnabled(False)  # sin implementar en esta fase
+        btn_filter.setEnabled(False)
         h.addWidget(btn_filter)
+
+        # Boton principal: Enviar Informe por Outlook.
+        # El footer ya no existe; este boton toma su lugar.
+        self._btn_send = QPushButton("  Enviar Informe por Outlook")
+        self._btn_send.setObjectName("btnReportSm")
+        self._btn_send.setIcon(svg("mail", 15))
+        self._btn_send.setCursor(Qt.PointingHandCursor)
+        self._btn_send.clicked.connect(self.enviarInformeClicked.emit)
+        h.addWidget(self._btn_send)
 
         # Tabla
         self._tabla = QTableWidget(0, len(COLS))
@@ -101,6 +120,13 @@ class BottomTablePanel(QFrame):
             self._add_row(r)
         n = len(registros)
         self._count_badge.setText(f"{n} {'registro' if n == 1 else 'registros'}")
+
+    def set_enviando(self, on: bool) -> None:
+        """Cambia el boton 'Enviar Informe' entre normal / 'Enviando...'."""
+        self._btn_send.setEnabled(not on)
+        self._btn_send.setText(
+            "  Enviando..." if on else "  Enviar Informe por Outlook"
+        )
 
     def _add_row(self, r: dict) -> None:
         row = self._tabla.rowCount()

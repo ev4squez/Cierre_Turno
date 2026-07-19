@@ -3,10 +3,9 @@
 Replica el layout de ``fds_ui.html`` en PySide6:
 
 * Topbar
-* Dashboard bar (4 KPI cards: FDS, Pend, Obs, Res)
+* Dashboard bar (4 KPI cards: Total / Operativas / Obs / Pendientes)
 * 2 paneles lado a lado: Machine (con buscador embebido) | Form
-* Tabla inferior
-* Footer
+* Tabla inferior (con boton 'Enviar Informe por Outlook' en el header)
 
 Los widgets son 'tontos': emiten senales. Toda la logica vive en
 ``controllers/main_controller.py``.
@@ -29,7 +28,6 @@ from PySide6.QtWidgets import (
 from config import load_config
 from ui.bottom_table import BottomTablePanel
 from ui.dashboard_bar import DashboardBar
-from ui.footer import Footer
 from ui.form_panel import IncidenciaForm
 from ui.helpers import load_stylesheet
 from ui.machine_panel import MachinePanel
@@ -117,21 +115,21 @@ class MainWindow(QMainWindow):
         tw.addWidget(self._table)
         outer.addWidget(table_wrap, 1)
 
-        # Footer
-        self._footer = Footer()
-        outer.addWidget(self._footer)
+        # El footer ya no existe. La tabla ahora trae el boton
+        # 'Enviar Informe' en su header.
 
     def _wire_signals(self) -> None:
         self._topbar.settingsClicked.connect(self.settingsRequested.emit)
         self._topbar.logoutClicked.connect(self._confirm_logout)
         self._topbar.importClicked.connect(self.importRequested.emit)
-        self._footer.enviarInforme.connect(self.enviarInformeRequested.emit)
         self._search_panel.queryChanged.connect(self.searchQueryChanged.emit)
         self._search_panel.machineSelected.connect(self._on_machine_selected)
         self._form.guardar.connect(self.guardarIncidencia.emit)
         self._form.limpiar.connect(self.limpiarForm.emit)
         self._table.editar.connect(self.editarIncidencia.emit)
         self._table.eliminar.connect(self.eliminarIncidencia.emit)
+        # El boton 'Enviar Informe' ahora vive en el header de la tabla.
+        self._table.enviarInformeClicked.connect(self.enviarInformeRequested.emit)
 
     def _on_machine_selected(self, m: dict) -> None:
         """Slot interno: propaga la seleccion al panel central y al form."""
@@ -186,8 +184,8 @@ class MainWindow(QMainWindow):
 
     def set_estado_catalogo(self, *, total: int, operativas: int,
                              en_observacion: int, pendientes: int) -> None:
-        """Actualiza las 4 cards KPI del dashboard top Y el footer con
-        el estado actual del catalogo de maquinas.
+        """Actualiza las 4 cards KPI del dashboard top con el estado
+        actual del catalogo de maquinas.
 
         Es la API principal para refrescar el resumen visual. La usan:
           - controllers/main_controller._refrescar_quick_stats
@@ -200,8 +198,8 @@ class MainWindow(QMainWindow):
           - En observacion   (azul)
           - Pendientes       (amber: FDS + Pend Rep + Esp Tec)
 
-        Footer (separado por divisor fuerte):
-          - TOTAL MAQUINAS, OPERATIVAS, EN OBSERVACION
+        (El footer ya no existe; los stats del catalogo viven solo en
+        el dashboard.)
         """
         # Dashboard (4 cards grandes arriba)
         self._dashboard.set_estado_catalogo(
@@ -209,12 +207,6 @@ class MainWindow(QMainWindow):
             operativas=operativas,
             en_observacion=en_observacion,
             pendientes=pendientes,
-        )
-        # Footer (3 stats del estado del catalogo, separadas de las del turno)
-        self._footer.set_estado_catalogo(
-            total=total,
-            operativas=operativas,
-            en_observacion=en_observacion,
         )
 
     def set_quick_stats(self, *, fds: int, pendientes: int, resueltas: int,
@@ -256,7 +248,8 @@ class MainWindow(QMainWindow):
         self._table.set_rows(rows)
 
     def set_sending(self, on: bool) -> None:
-        self._footer.set_enviando(on)
+        """Cambia el estado del boton 'Enviar Informe' en el header de la tabla."""
+        self._table.set_enviando(on)
 
 
 __all__ = ("MainWindow",)

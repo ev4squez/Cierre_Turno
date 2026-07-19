@@ -433,12 +433,14 @@
     padding: 12px 18px; border-bottom:1px solid var(--border-soft);
     display:flex; align-items:center; justify-content:space-between;
     flex-shrink:0;
+    gap: 12px;
   }
   .bp-head .panel-title{ font-size:14px; }
   .bp-head .count-badge{
     font-size:12px; font-weight:700; color: var(--blue); background: var(--blue-tint);
     padding: 3px 10px; border-radius: 999px; margin-left:8px;
   }
+  .bp-actions{ display:flex; align-items:center; gap:8px; }
   .table-wrap{ overflow-y:auto; flex:1; min-height:0; }
   table{ width:100%; border-collapse:collapse; }
   thead th{
@@ -499,6 +501,12 @@
     box-shadow: 0 4px 14px rgba(30,90,168,0.28);
   }
   .btn-report:hover{ background: var(--blue-dark); }
+  /* Version compacta del boton report para el header de la tabla */
+  .btn-report-sm{
+    padding: 8px 14px;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(30,90,168,0.20);
+  }
 
   ::-webkit-scrollbar{ width:8px; height:8px; }
   ::-webkit-scrollbar-thumb{ background: #CBD5E1; border-radius:8px; }
@@ -784,10 +792,16 @@
         Incidencias del turno
         <span class="count-badge">3 registros</span>
       </div>
-      <button class="btn btn-ghost">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg>
-        Filtrar
-      </button>
+      <div class="bp-actions">
+        <button class="btn btn-ghost" disabled>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6h12z"/></svg>
+          Filtrar
+        </button>
+        <button class="btn btn-report btn-report-sm">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6L12 13 2 6"/><path d="M2 6h20v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>
+          Enviar Informe por Outlook
+        </button>
+      </div>
     </div>
     <div class="table-wrap">
       <table>
@@ -852,37 +866,6 @@
         </tbody>
       </table>
     </div>
-  </div>
-
-  <!-- ===================== FOOTER ===================== -->
-  <!--
-    Footer limpio: solo stats del catalogo a la izquierda (duplicados en el
-    dashboard pero quedan visibles mientras el operador arma el informe) y
-    el boton de envio a la derecha.
-    Los stats del TURNO (Total Incidencias / Maquinas Registradas / Hora
-    Inicio / Pendientes) se quitaron porque ya viven en el dashboard KPI
-    y mantener los dos era ruido visual.
-  -->
-  <div class="footer">
-    <div class="foot-stat">
-      <span class="fs-label">Total maquinas</span>
-      <span class="fs-value">238</span>
-    </div>
-    <div class="foot-divider"></div>
-    <div class="foot-stat">
-      <span class="fs-label">Operativas</span>
-      <span class="fs-value" style="color: var(--green);">221</span>
-    </div>
-    <div class="foot-divider"></div>
-    <div class="foot-stat">
-      <span class="fs-label">En observacion</span>
-      <span class="fs-value" style="color: var(--blue);">4</span>
-    </div>
-    <div class="footer-spacer"></div>
-    <button class="btn btn-report">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6L12 13 2 6"/><path d="M2 6h20v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>
-      Enviar Informe por Outlook
-    </button>
   </div>
 
 </div>

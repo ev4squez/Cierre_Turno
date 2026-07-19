@@ -591,43 +591,21 @@ QToolButton.iconBtn {
 QToolButton.iconBtn:hover { background-color: #EEF1F6; }
 QToolButton.iconBtn[role="danger"]:hover { background-color: #FDECEC; color: #DC2626; border: 1px solid #F3D3D3; }
 
-/* ====================== FOOTER ====================== */
-QFrame#footer {
-    background-color: #FFFFFF;
-    border-top: 1px solid #E1E6ED;
-    min-height: 68px;
-    max-height: 68px;
-}
+/* ====================== BOTONES HEADER TABLA ====================== */
+/* El footer ya no existe. El boton 'Enviar Informe' ahora vive en el
+   header de la tabla de incidencias (objectName btnReportSm). */
 
-QLabel.fsLabel {
-    color: #94A3B8;
-    font-size: 11px;
+QPushButton#btnReportSm {
+    background-color: #1E5AA8;
+    color: #FFFFFF;
+    padding: 8px 14px;
+    font-size: 13px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(30,90,168,0.20);
 }
-
-QLabel.fsValue {
-    color: #1B2430;
-    font-size: 17px;
-    font-weight: 800;
-}
-QLabel.fsValue[accent="true"] { color: #1E5AA8; }
-
-/* Colores custom para stats del footer (sobreescriben accent) */
-QLabel.fsValue[color="green"]      { color: #16A34A; }
-QLabel.fsValue[color="blue"]       { color: #1E5AA8; }
-QLabel.fsValue[color="amber"]      { color: #D97706; }
-QLabel.fsValue[color="red"]        { color: #DC2626; }
-QLabel.fsValue[color="default"]    { color: #1B2430; }
-
-QFrame.footDivider {
-    background-color: #E1E6ED;
-    min-width: 1px;
-    max-width: 1px;
-    min-height: 32px;
-    max-height: 32px;
-}
+QPushButton#btnReportSm:hover { background-color: #164788; }
+QPushButton#btnReportSm:disabled { background-color: #94A3B8; }
 
 /* ====================== SCROLLBAR ====================== */
 QScrollBar:vertical {

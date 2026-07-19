@@ -174,18 +174,40 @@ def main() -> int:
               w._table._tabla.rowCount() == 1,
               f"rows = {w._table._tabla.rowCount()}")
 
-    section("5. Footer")
+    section("5. Boton 'Enviar Informe' en el header de la tabla")
+    # El footer ya no existe. El boton principal de envio vive ahora
+    # en el header de la tabla de incidencias.
     w.set_estado_catalogo(total=10, operativas=8, en_observacion=1, pendientes=1)
     app.processEvents()
-    check("footer total maquinas = 10",
-          w._footer._total_maquinas["value"].text() == "10",
-          f"value={w._footer._total_maquinas['value'].text()!r}")
-    check("footer operativas = 8",
-          w._footer._operativas["value"].text() == "8",
-          f"value={w._footer._operativas['value'].text()!r}")
-    check("footer en observacion = 1",
-          w._footer._en_obs["value"].text() == "1",
-          f"value={w._footer._en_obs['value'].text()!r}")
+    check("dashboard TOTAL = 10",
+          w._dashboard._total._value.text() == "10",
+          f"value={w._dashboard._total._value.text()!r}")
+    check("dashboard OPERATIVAS = 8",
+          w._dashboard._operativas._value.text() == "8",
+          f"value={w._dashboard._operativas._value.text()!r}")
+    check("dashboard OBS = 1",
+          w._dashboard._obs._value.text() == "1",
+          f"value={w._dashboard._obs._value.text()!r}")
+    check("tabla tiene _btn_send (boton Enviar Informe)",
+          hasattr(w._table, "_btn_send"))
+    check("tabla emite enviarInformeClicked",
+          hasattr(w._table, "enviarInformeClicked"))
+    check("tabla NO expone el viejo footer (set_enviando en footer)",
+          not hasattr(w, "_footer") or not hasattr(getattr(w, "_footer", None), "set_enviando"))
+    check("MainWindow NO expone set_footer (removida)",
+          not hasattr(w, "set_footer"))
+
+    # Verificar que el boton cambia a 'Enviando...' y vuelve
+    w.set_sending(True)
+    app.processEvents()
+    check("boton cambia a 'Enviando...' al enviar",
+          "Enviando" in w._table._btn_send.text(),
+          f"text={w._table._btn_send.text()!r}")
+    w.set_sending(False)
+    app.processEvents()
+    check("boton vuelve a 'Enviar Informe por Outlook' al terminar",
+          "Enviar Informe por Outlook" in w._table._btn_send.text(),
+          f"text={w._table._btn_send.text()!r}")
 
     section("6. Editar / Eliminar senales conectadas")
     editados: list[int] = []
