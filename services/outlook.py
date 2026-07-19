@@ -32,12 +32,54 @@ from services import email_renderer
 
 
 def outlook_disponible() -> bool:
-    """Devuelve True si win32com.client esta disponible en esta maquina."""
+    """Devuelve True si Outlook esta REALMENTE usable para enviar.
+
+    Antes solo chequeaba si la libreria ``win32com`` estaba instalada
+    (es decir si pip la habia bajado). Eso daba falso positivo en
+    equipos con pywin32 instalado pero sin Outlook configurado / sin
+    cuenta / con Outlook cerrado.
+
+    Ahora hace 3 chequeos:
+      1. win32com.client se puede importar
+      2. Outlook.Application se puede instanciar (sin que tire error)
+      3. Hay al menos una cuenta configurada
+
+    Si cualquier falla, devuelve False. El caller deberia mostrarle
+    al operador que el informe se va a guardar como archivo .eml en
+    vez de mandarse por Outlook.
+    """
+    # 1. win32com instalado?
     try:
         import win32com.client  # type: ignore[import-not-found]  # noqa: F401
-        return True
     except ImportError:
         return False
+
+    # 2. Outlook.Application instanciable?
+    try:
+        import win32com.client  # type: ignore[import-not-found]
+        app = win32com.client.Dispatch("Outlook.Application")
+    except Exception:
+        return False
+
+    # 3. Hay al menos una cuenta configurada?
+    try:
+        # Namespace es lo que da acceso a cuentas / carpetas. Si
+        # Outlook no esta logueado, esto puede tirar.
+        namespace = app.GetNamespace("MAPI")
+        if namespace is None:
+            return False
+        # Session.Accounts: lista de cuentas activas. Si Count == 0,
+        # no hay cuenta para enviar desde.
+        try:
+            session = namespace.Session
+            if session is None or session.Accounts.Count == 0:
+                return False
+        except Exception:
+            return False
+    except Exception:
+        return False
+
+    return True
 
 
 # ---------------------------------------------------------------------------
