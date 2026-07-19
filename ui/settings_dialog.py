@@ -26,6 +26,7 @@ from ui.correo_tab import CorreoTab
 from ui.empresa_tab import EmpresaTab
 from ui.maquinas_tab import MaquinasTab
 from ui.tecnicos_tab import TecnicosTab
+from ui.tipos_problema_tab import TiposProblemaTab
 
 
 class SettingsDialog(QDialog):
@@ -80,6 +81,10 @@ class SettingsDialog(QDialog):
         self._tecnicos_tab = TecnicosTab()
         self._tecnicos_tab.changed.connect(self._on_any_change)
         self._tabs.addTab(self._tecnicos_tab, "Tecnicos")
+
+        self._tipos_problema_tab = TiposProblemaTab()
+        self._tipos_problema_tab.changed.connect(self._on_any_change)
+        self._tabs.addTab(self._tipos_problema_tab, "Tipos de problema")
 
         root.addWidget(self._tabs, 1)
 

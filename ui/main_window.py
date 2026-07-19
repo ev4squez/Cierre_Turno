@@ -237,6 +237,10 @@ class MainWindow(QMainWindow):
     def set_tecnicos(self, tecnicos: list[str]) -> None:
         self._form.set_tecnicos(tecnicos)
 
+    def set_tipos_problema(self, tipos: list[str]) -> None:
+        """Actualiza el combo 'Tipo de problema' del form de FDS."""
+        self._form.set_tipos_problema(tipos)
+
     def set_topbar_usuario(self, nombre: str, rol: str) -> None:
         self._topbar.set_usuario(nombre, rol)
 

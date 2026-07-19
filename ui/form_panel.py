@@ -86,7 +86,10 @@ class IncidenciaForm(QFrame):
         self._cb_tecnico = self._field_combo("Tecnico responsable *", [])
         bl.addWidget(self._cb_tecnico["host"])
 
-        # Tipo de problema
+        # Tipo de problema: se llena por API (set_tipos_problema) desde
+        # el controller, que lee de la DB. El fallback a TIPOS_PROBLEMA
+        # (constante de modulo) sirve para cuando se construye el form
+        # sin DB todavia disponible (ej. tests offscreen sin DB).
         self._cb_tipo = self._field_combo(
             "Tipo de problema *",
             ["Seleccionar tipo..."] + list(TIPOS_PROBLEMA),
@@ -198,6 +201,31 @@ class IncidenciaForm(QFrame):
         cb.clear()
         cb.addItem("Seleccionar tecnico...")
         cb.addItems(tecnicos)
+
+    def set_tipos_problema(self, tipos: list[str]) -> None:
+        """Reemplaza los items del combo 'Tipo de problema'.
+
+        Llamado por el controller cuando arranca la app o cuando el
+        operador modifica los tipos desde Settings. Si ``tipos`` viene
+        vacio (caso raro), cae al default de ``config.TIPOS_PROBLEMA``
+        asi el combo nunca queda sin opciones.
+        """
+        cb = self._cb_tipo["widget"]
+        actual = cb.currentText()
+        cb.blockSignals(True)
+        try:
+            cb.clear()
+            cb.addItem("Seleccionar tipo...")
+            opciones = tipos if tipos else list(TIPOS_PROBLEMA)
+            cb.addItems(opciones)
+            # Si el valor que estaba seleccionado sigue existiendo, lo
+            # restauramos. Si no, dejamos el placeholder.
+            if actual and actual != "Seleccionar tipo...":
+                idx = cb.findText(actual)
+                if idx >= 0:
+                    cb.setCurrentIndex(idx)
+        finally:
+            cb.blockSignals(False)
 
     def set_machine(self, m: dict | None) -> None:
         """Carga la maquina seleccionada. Si es None, deshabilita."""

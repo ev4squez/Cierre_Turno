@@ -60,6 +60,14 @@ class MainController:
             # Si falla la migracion, logueamos pero seguimos
             print(f"[WARN] migrar tecnicos desde config: {e}")
 
+        # 1b. Migrar tipos de problema desde config.TIPOS_PROBLEMA a la DB
+        #     (la primera vez). Mismo patron que tecnicos_db.
+        try:
+            from services import tipos_problema_db
+            tipos_problema_db.migrar_desde_config()
+        except Exception as e:
+            print(f"[WARN] migrar tipos de problema desde config: {e}")
+
         # 2. Cargar tecnicos y usuario actual desde la DB
         try:
             from services import tecnicos_db
@@ -69,6 +77,17 @@ class MainController:
             print(f"[WARN] cargar tecnicos de DB: {e}")
             cfg = svc_cfg.obtener()
             self.win.set_tecnicos(cfg.get("tecnicos", []))
+
+        # 2b. Cargar tipos de problema desde la DB y popular el combo del form.
+        try:
+            from services import tipos_problema_db
+            tipos = tipos_problema_db.listar_nombres(solo_activos=True)
+            self.win.set_tipos_problema(tipos)
+        except Exception as e:
+            print(f"[WARN] cargar tipos de problema de DB: {e}")
+            # Fallback al config si la DB falla
+            from config import TIPOS_PROBLEMA
+            self.win.set_tipos_problema(list(TIPOS_PROBLEMA))
 
         # 3. Refrescar el chip del topbar con el usuario actual de la DB
         self.refrescar_topbar_usuario()
@@ -341,7 +360,9 @@ class MainController:
             )
 
     def on_settings(self) -> None:
-        """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas, Tecnicos)."""
+        """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas,
+        Tecnicos, Tipos de problema).
+        """
         from ui.settings_dialog import SettingsDialog
         dlg = SettingsDialog(self.win)
         def _on_changed() -> None:
@@ -352,6 +373,14 @@ class MainController:
                 self.win.set_tecnicos([t["nombre"] for t in tecnicos])
             except Exception as e:
                 print(f"[WARN] refrescar tecnicos: {e}")
+            # Refrescar tipos de problema desde la DB (caso el operador
+            # haya agregado / renombrado / eliminado categorias).
+            try:
+                from services import tipos_problema_db
+                tipos = tipos_problema_db.listar_nombres(solo_activos=True)
+                self.win.set_tipos_problema(tipos)
+            except Exception as e:
+                print(f"[WARN] refrescar tipos de problema: {e}")
             # Refrescar el topbar (puede haber cambiado el operador actual)
             self.refrescar_topbar_usuario()
             # Refrescar lista del turno y stats por si modificaron maquinas
