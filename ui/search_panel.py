@@ -188,15 +188,30 @@ class SearchPanel(QFrame):
         return item
 
     def _on_item_clicked(self, m: dict) -> None:
+        # Limpiar 'active' en todos los widgets vivos.
+        # Algunos pueden haber sido eliminados por un set_results()
+        # concurrente o por Qt al re-paint; en ese caso los salteamos
+        # en lugar de tirar RuntimeError.
+        vivos: list[QFrame] = []
         for w in self._result_widgets:
-            w.setProperty("active", "false")
-            w.style().unpolish(w)
-            w.style().polish(w)
-        for w in self._result_widgets:
-            if w.property("maquina") is m:
-                w.setProperty("active", "true")
+            try:
+                # Cualquier llamada a un metodo del widget tira RuntimeError
+                # si el objeto C++ ya fue borrado.
+                w.setProperty("active", "false")
                 w.style().unpolish(w)
                 w.style().polish(w)
+                vivos.append(w)
+            except RuntimeError:
+                continue
+        self._result_widgets = vivos
+        for w in vivos:
+            try:
+                if w.property("maquina") is m:
+                    w.setProperty("active", "true")
+                    w.style().unpolish(w)
+                    w.style().polish(w)
+            except RuntimeError:
+                continue
         self._search.clearFocus()
         self.machineSelected.emit(m)
 
@@ -220,25 +235,41 @@ class SearchPanel(QFrame):
     def _navigate_results(self, key: int) -> None:
         if not self._last_results:
             return
+        # Filtrar widgets muertos antes de iterar (ver _on_item_clicked).
+        vivos = []
+        for w in self._result_widgets:
+            try:
+                _ = w.property("active")
+                vivos.append(w)
+            except RuntimeError:
+                continue
+        self._result_widgets = vivos
+        if not vivos:
+            return
         actual_id = next(
-            (i for i, w in enumerate(self._result_widgets)
-             if w.property("active") == "true"),
+            (i for i, w in enumerate(vivos) if w.property("active") == "true"),
             -1,
         )
         if key == Qt.Key_Down:
-            new = min(actual_id + 1, len(self._result_widgets) - 1)
+            new = min(actual_id + 1, len(vivos) - 1)
         else:
             new = max(actual_id - 1, 0)
         if new < 0:
             return
-        for w in self._result_widgets:
-            w.setProperty("active", "false")
-            w.style().unpolish(w)
-            w.style().polish(w)
-        chosen = self._result_widgets[new]
-        chosen.setProperty("active", "true")
-        chosen.style().unpolish(chosen)
-        chosen.style().polish(chosen)
+        for w in vivos:
+            try:
+                w.setProperty("active", "false")
+                w.style().unpolish(w)
+                w.style().polish(w)
+            except RuntimeError:
+                continue
+        chosen = vivos[new]
+        try:
+            chosen.setProperty("active", "true")
+            chosen.style().unpolish(chosen)
+            chosen.style().polish(chosen)
+        except RuntimeError:
+            return
         self.machineSelected.emit(self._last_results[new])
 
 

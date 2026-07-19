@@ -297,7 +297,9 @@ QLineEdit#searchInput {
 }
 QLineEdit#searchInput:focus {
     border: 1.5px solid #1E5AA8;
-    box-shadow: 0 0 0 3px #EAF1FB;
+    /* Qt no soporta box-shadow en QSS; usamos un border mas grueso
+       como sustituto del focus ring. */
+    border-width: 2px;
 }
 
 QLabel#searchHint {
