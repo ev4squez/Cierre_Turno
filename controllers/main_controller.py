@@ -136,15 +136,46 @@ class MainController:
     # ------------------------------------------------------------------
 
     def on_search_query(self, query: str) -> None:
-        """Busqueda live del sidebar."""
-        # Si no hay query, priorizamos maquinas problematicas (En
-        # Observacion, FDS, etc.) para que el operador las vea al
-        # abrir el sistema sin tipear nada.
-        if not (query or "").strip():
-            resultados = svc_maq.buscar_maquinas_priorizando_problematicas("", limit=25)
+        """Busqueda live del sidebar, respetando el filtro de estado.
+
+        Si el filtro es "Todos" y no hay query, priorizamos las
+        problematicas para que el operador las vea al abrir el sistema
+        sin tipear nada. Si hay filtro o query, usamos la busqueda
+        normal respetando el filtro de estado.
+        """
+        filtro = self.win._search_panel.get_filtro_estado()
+        # Sin query + sin filtro: priorizamos problematicas (UX original)
+        if not (query or "").strip() and filtro == "Todos":
+            resultados = svc_maq.buscar_maquinas_priorizando_problematicas(
+                "", limit=25
+            )
         else:
-            resultados = svc_maq.buscar_maquinas(query, limit=25)
+            # Si hay query, primero traemos candidatas y despues
+            # filtramos por estado en memoria. Si no hay query,
+            # usamos listar_por_estado que es una sola query SQL.
+            if filtro == "Todos":
+                resultados = svc_maq.buscar_maquinas(query, limit=25)
+            else:
+                if (query or "").strip():
+                    cand = svc_maq.buscar_maquinas(query, limit=200)
+                    resultados = [
+                        m for m in cand if m.get("estado") == filtro
+                    ][:25]
+                else:
+                    resultados = svc_maq.listar_por_estado(
+                        filtro, limit=25
+                    )
         self.win.set_search_results(resultados)
+
+    def on_search_filter_changed(self, estado: str) -> None:
+        """Handler del cambio de filtro de estado en el search panel.
+
+        Re-usa la logica de ``on_search_query`` pasando el texto
+        actual del input (para que el filtro se aplique sobre la
+        query que ya estaba tipeada, si la hay).
+        """
+        texto_actual = self.win._search_panel._search.text() or ""
+        self.on_search_query(texto_actual)
 
     def on_machine_selected(self, m: dict) -> None:
         """Maquina seleccionada: guardar referencia + mostrar form."""
@@ -738,17 +769,44 @@ class MainController:
     def on_dashboard_card_clicked(self, color_key: str) -> None:
         """Handler de clicks en las cards del dashboard.
 
-        Por ahora solo la card 'Tareas pendientes' (color_key='red')
-        tiene accion: abre el dialog de Actividades Diarias con el
-        filtro 'Solo pendientes' activado. Las otras 4 cards quedan
-        como visualizacion (la card 'Pendientes' de FDS ya tiene su
-        propio atajo via el boton 'Con problemas ahora' del panel
-        central, asi que no duplicamos).
+        Mapeo:
+          - 'dark'  (Total maquinas)   -> limpia filtro a "Todos" y refresca
+          - 'green' (Operativas)        -> filtra a "Operativa"
+          - 'blue'  (En observacion)    -> filtra a "En Observacion"
+          - 'amber' (Pendientes FDS)    -> abre MaquinasProblematicasDialog
+          - 'red'   (Tareas pendientes) -> abre dialog de Actividades Diarias
+                                          con filtro 'Solo pendientes'
+
+        Ademas de filtrar el search panel, las 3 cards de maquinas
+        ponen el foco en el buscador para que el operador pueda
+        seguir tipeando sin tener que hacer click ahi.
         """
         if color_key == "red":
             self.on_actividades(pendiente_solo=True)
-        # 'amber' (Pendientes FDS) se maneja por separado: el operador
-        # usa el boton 'Con problemas ahora' del panel central.
+            return
+        if color_key == "amber":
+            self.on_ver_problematicas()
+            return
+        # dark/green/blue: filtran el search panel
+        filtro_map = {
+            "dark":  "Todos",
+            "green": "Operativa",
+            "blue":  "En Observacion",
+        }
+        estado = filtro_map.get(color_key)
+        if estado is None:
+            return
+        # Seteamos el filtro (sin disparar filterChanged) y refrescamos
+        # usando la query actual (que probablemente sea vacia).
+        self.win._search_panel.set_filtro_estado(estado)
+        texto_actual = self.win._search_panel._search.text() or ""
+        self.on_search_query(texto_actual)
+        # Foco en el input del buscador para que el operador pueda
+        # tipear y filtrar mas sin tener que mover el mouse.
+        try:
+            self.win._search_panel.focus_search()
+        except Exception:
+            pass
 
     def on_logout(self) -> None:
         """Cerrar la app (QApplication.quit)."""
@@ -909,6 +967,7 @@ class MainController:
     def wire(self) -> None:
         """Conecta los signals de la ventana a los handlers de este controller."""
         self.win.searchQueryChanged.connect(self.on_search_query)
+        self.win._search_panel.filterChanged.connect(self.on_search_filter_changed)
         self.win.machineSelected.connect(self.on_machine_selected)
         self.win.guardarIncidencia.connect(self.on_guardar_incidencia)
         self.win.limpiarForm.connect(self.on_limpiar_form)

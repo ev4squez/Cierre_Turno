@@ -15,6 +15,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -24,6 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from config import ESTADOS_MAQUINA
 from ui.helpers import clear_layout, severity_for_estado, svg
 
 
@@ -34,10 +36,13 @@ class SearchPanel(QFrame):
     -------
     machineSelected(dict): maquina elegida
     queryChanged(str):     emite en cada keystroke (live search)
+    filterChanged(str):     emite cuando cambia el filtro de estado.
+        El string es "Todos" o uno de ``config.ESTADOS_MAQUINA``.
     """
 
     machineSelected = Signal(dict)
     queryChanged = Signal(str)
+    filterChanged = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -63,6 +68,35 @@ class SearchPanel(QFrame):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 12)
         outer.setSpacing(6)
+
+        # --- Filtro de estado (combo chico) -------------------------
+        # Sirve para que el operador pueda restringir la lista sin
+        # tipear nada. Ademas es el sink de los clicks de las cards
+        # del dashboard (Total / Operativas / En observacion / etc).
+        filter_row = QFrame()
+        fr = QHBoxLayout(filter_row)
+        fr.setContentsMargins(0, 0, 0, 0)
+        fr.setSpacing(6)
+        lbl = QLabel("Estado:")
+        lbl.setProperty("class", "searchFilterLabel")
+        lbl.setStyleSheet(
+            "color:#1B2430; font-size:11.5px; font-weight:600;"
+        )
+        fr.addWidget(lbl)
+        self._cb_filtro_estado = QComboBox()
+        # "Todos" + los estados canonicos del casino
+        self._cb_filtro_estado.addItem("Todos")
+        for est in ESTADOS_MAQUINA:
+            self._cb_filtro_estado.addItem(est)
+        self._cb_filtro_estado.setCurrentIndex(0)  # "Todos"
+        self._cb_filtro_estado.currentTextChanged.connect(
+            self._on_filtro_cambiado
+        )
+        # Mas compacto que el default para que entre en la misma fila
+        # que el label sin estirar demasiado el panel.
+        self._cb_filtro_estado.setMaximumWidth(160)
+        fr.addWidget(self._cb_filtro_estado, 1)
+        outer.addWidget(filter_row)
 
         # Search box (icon + input + clear icon)
         search_wrap = QFrame()
@@ -229,6 +263,36 @@ class SearchPanel(QFrame):
 
     def _on_text_changed(self, text: str) -> None:
         self.queryChanged.emit(text)
+
+    def _on_filtro_cambiado(self, val: str) -> None:
+        """Re-emite el cambio de filtro para que el controller refrezque."""
+        self.filterChanged.emit(val or "Todos")
+
+    # --- API --------------------------------------------------------------
+
+    def set_filtro_estado(self, estado: str) -> None:
+        """Cambia el combo de filtro externamente (sin disparar signal).
+
+        Usado por el controller cuando el operador hace click en una
+        card del dashboard. No emitimos filterChanged porque la
+        llamada ya viene del controller, que refresca la lista
+        inmediatamente.
+        """
+        if not estado:
+            estado = "Todos"
+        idx = self._cb_filtro_estado.findText(estado)
+        if idx < 0:
+            return  # estado desconocido, no tocamos el combo
+        # blockSignals para no disparar filterChanged en bucle
+        self._cb_filtro_estado.blockSignals(True)
+        try:
+            self._cb_filtro_estado.setCurrentIndex(idx)
+        finally:
+            self._cb_filtro_estado.blockSignals(False)
+
+    def get_filtro_estado(self) -> str:
+        """Devuelve el estado seleccionado en el combo ('Todos' si no hay filtro)."""
+        return self._cb_filtro_estado.currentText() or "Todos"
 
     def _on_enter(self) -> None:
         if self._last_results:

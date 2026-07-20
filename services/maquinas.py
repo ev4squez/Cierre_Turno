@@ -103,6 +103,33 @@ def buscar_maquinas_priorizando_problematicas(query: str, limit: int = 25) -> li
         return [m.to_dict() for m in s.scalars(stmt)]
 
 
+def listar_por_estado(estado: str, *, limit: int = 500,
+                      incluir_inactivos: bool = False) -> list[dict]:
+    """Lista maquinas filtradas por estado.
+
+    Pensado para los clicks en las cards del dashboard:
+      - 'Operativa'      -> card verde "Operativas"
+      - 'En Observacion' -> card azul  "En observacion"
+      - 'Todos' / ''     -> card dark  "Total maquinas" (sin filtro de estado)
+
+    Orden: por sector / isla / numero (estable y predecible).
+    Limit default 500 para no traer todo el parque si la SCJ
+    pidio un Excel. Si hace falta mas, se sube.
+    """
+    with get_session() as s:
+        stmt = select(Maquina).order_by(
+            Maquina.sector.asc(),
+            Maquina.isla.asc(),
+            Maquina.numero_maquina.asc(),
+        )
+        if not incluir_inactivos:
+            stmt = stmt.where(Maquina.activo.is_(True))
+        if estado and estado != "Todos":
+            stmt = stmt.where(Maquina.estado == estado)
+        stmt = stmt.limit(limit)
+        return [m.to_dict() for m in s.scalars(stmt)]
+
+
 def obtener_por_numero(numero_maquina: str, incluir_inactivos: bool = False) -> dict | None:
     """Devuelve la maquina con ese numero, o ``None``.
 
