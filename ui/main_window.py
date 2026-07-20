@@ -41,6 +41,7 @@ class MainWindow(QMainWindow):
     logoutRequested = Signal()
     enviarInformeRequested = Signal()
     previsualizarInformeRequested = Signal()
+    editMachineRequested = Signal(dict)
     searchQueryChanged = Signal(str)
     machineSelected = Signal(dict)
     guardarIncidencia = Signal(dict)
@@ -132,6 +133,8 @@ class MainWindow(QMainWindow):
         # El boton 'Enviar Informe' ahora vive en el header de la tabla.
         self._table.enviarInformeClicked.connect(self.enviarInformeRequested.emit)
         self._table.previsualizarClicked.connect(self.previsualizarInformeRequested.emit)
+        # Boton 'Editar datos' del panel central de la maquina
+        self._machine_panel.editRequested.connect(self.editMachineRequested.emit)
         # Atajos de teclado (Ctrl+E/N/F/L, Esc)
         self._wire_shortcuts()
 

@@ -49,7 +49,13 @@ class SearchPanel(QFrame):
         self._result_widgets: list[QFrame] = []
         self._last_results: list[dict] = []
 
+        # Historial de busquedas para autocompletar (persistente)
+        from ui.search_history import SearchHistory
+        self._history = SearchHistory(self)
+
         self._build_ui()
+        # Instala el QCompleter del historial en el QLineEdit
+        self._history.install_completer(self._search)
 
     # --- UI --------------------------------------------------------------
 
@@ -213,6 +219,12 @@ class SearchPanel(QFrame):
             except RuntimeError:
                 continue
         self._search.clearFocus()
+        # Guardamos la busqueda en el historial para autocompletar
+        # la proxima vez (si el operador escribio algo, no si solo
+        # uso Enter sin tocar el texto).
+        q = self._search.text().strip()
+        if q:
+            self._history.agregar(q)
         self.machineSelected.emit(m)
 
     def _on_text_changed(self, text: str) -> None:
@@ -220,6 +232,9 @@ class SearchPanel(QFrame):
 
     def _on_enter(self) -> None:
         if self._last_results:
+            q = self._search.text().strip()
+            if q:
+                self._history.agregar(q)
             self.machineSelected.emit(self._last_results[0])
 
     def focus_search(self) -> None:

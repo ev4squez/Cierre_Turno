@@ -266,6 +266,33 @@ class MaquinasTab(QFrame):
         """Recarga desde la DB (util cuando otros tabs la modifican)."""
         self._refrescar()
 
+    def select_by_numero(self, numero_maquina: str) -> bool:
+        """Selecciona la fila de la maquina con ese numero.
+
+        Usado por el boton 'Editar datos' del panel central: el
+        controller abre este tab con la maquina preseleccionada y
+        nosotros marcamos su fila para que el operador la vea
+        inmediatamente. Retorna True si encontro la fila.
+        """
+        if not numero_maquina:
+            return False
+        # Asegurarnos de que el tab 'Activas' este visible y refrescado
+        try:
+            self._subtabs.setCurrentIndex(0)
+        except Exception:
+            pass
+        self._refrescar()
+        # Buscar en la tabla de activas
+        for row in range(self._tabla_activas.rowCount()):
+            num_item = self._tabla_activas.item(row, 0)
+            if num_item and num_item.text() == numero_maquina:
+                self._tabla_activas.selectRow(row)
+                self._tabla_activas.scrollToItem(
+                    num_item, self._tabla_activas.PositionAtCenter
+                )
+                return True
+        return False
+
     def _refrescar(self) -> None:
         self._tabla_activas.setRowCount(0)
         self._tabla_papelera.setRowCount(0)

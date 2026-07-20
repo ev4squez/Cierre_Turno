@@ -11,7 +11,7 @@ Layout (post-rediseno):
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -29,7 +29,15 @@ from ui.search_panel import SearchPanel
 
 
 class MachinePanel(QFrame):
-    """Muestra los datos de la maquina seleccionada + ultimas incidencias."""
+    """Muestra los datos de la maquina seleccionada + ultimas incidencias.
+
+    Signals
+    -------
+    editRequested(dict):   el operador aprieta 'Editar' en el panel.
+                           Emite la maquina seleccionada.
+    """
+
+    editRequested = Signal(dict)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -37,6 +45,7 @@ class MachinePanel(QFrame):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setMinimumWidth(500)
 
+        self._current_maquina: dict | None = None
         self._build_ui()
         self.show_empty()
 
@@ -56,6 +65,18 @@ class MachinePanel(QFrame):
         h.addWidget(icon)
         h.addWidget(title)
         h.addStretch(1)
+        # Boton para editar los datos de la maquina desde aca mismo
+        # (abre el tab Maquinas de Settings con esta maquina preseleccionada)
+        self._btn_editar = QPushButton("  Editar datos")
+        self._btn_editar.setObjectName("btnSecondary")
+        self._btn_editar.setIcon(svg("edit", 14))
+        self._btn_editar.setCursor(Qt.PointingHandCursor)
+        self._btn_editar.setToolTip(
+            "Editar los datos de esta maquina (Settings > Maquinas)"
+        )
+        self._btn_editar.setEnabled(False)
+        self._btn_editar.clicked.connect(self._on_editar_clicked)
+        h.addWidget(self._btn_editar)
 
         # Body
         body = QFrame()
@@ -187,8 +208,12 @@ class MachinePanel(QFrame):
         for key, lbl in self._fields.items():
             lbl.setText("-")
         self._clear_history()
+        self._current_maquina = None
+        self._btn_editar.setEnabled(False)
 
     def show_machine(self, m: dict) -> None:
+        self._current_maquina = m
+        self._btn_editar.setEnabled(True)
         num = str(m.get("numero_maquina") or "-")
         self._big_num.setText(f"N.\u00ba {num}")
         sub = f"{m.get('marca','')} {m.get('modelo','')}".strip()
@@ -210,6 +235,16 @@ class MachinePanel(QFrame):
         self._status_pill.setProperty("severity", severity)
         self._status_pill.style().unpolish(self._status_pill)
         self._status_pill.style().polish(self._status_pill)
+
+    def _on_editar_clicked(self) -> None:
+        """Apretaron 'Editar datos': emite la maquina actual para que el
+        controller abra Settings > Maquinas con esta preseleccionada."""
+        if self._current_maquina is not None:
+            self.editRequested.emit(self._current_maquina)
+
+    def current_maquina(self) -> dict | None:
+        """Devuelve la maquina actualmente mostrada (o None)."""
+        return self._current_maquina
 
     def set_history(self, items: list[dict]) -> None:
         """items: lista de {'fecha', 'texto', 'resuelta': bool}."""

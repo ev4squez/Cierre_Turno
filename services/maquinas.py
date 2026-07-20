@@ -602,6 +602,40 @@ def contar_por_estado(solo_activas: bool = True) -> dict[str, int]:
     return counts
 
 
+def listar_atascadas(dias_minimo: int = 7, *, solo_activas: bool = True) -> list[dict]:
+    """Maquinas con estado problematico que llevan >= dias_minimo sin cambio.
+
+    Estados problematicos: 'Fuera de Servicio', 'Pendiente Repuesto',
+    'Espera Servicio Tecnico', 'En Observacion'. Si la maquina lleva
+    mas de N dias en ese estado (sin cambios), aparece en la lista.
+
+    Util para que el area de cumplimiento vea patrones y compre repuestos
+    o gestione garantias antes de que la situacion empeore.
+    """
+    from datetime import datetime, timedelta
+
+    estados_problematicos = (
+        "Fuera de Servicio",
+        "Pendiente Repuesto",
+        "Espera Servicio Tecnico",
+        "En Observacion",
+    )
+    limite = datetime.now() - timedelta(days=dias_minimo)
+    with get_session() as s:
+        stmt = select(Maquina).where(
+            Maquina.estado.in_(estados_problematicos),
+            Maquina.updated_at <= limite,
+        )
+        if solo_activas:
+            stmt = stmt.where(Maquina.activo.is_(True))
+        stmt = stmt.order_by(Maquina.updated_at.asc())
+        resultado = []
+        for m in s.scalars(stmt):
+            d = m.to_dict()
+            d["dias_en_estado"] = (datetime.now() - m.updated_at).days
+            resultado.append(d)
+        return resultado
+
 __all__: Iterable[str] = (
     "buscar_maquinas",
     "obtener_por_numero",
@@ -611,8 +645,10 @@ __all__: Iterable[str] = (
     "importar_desde_excel",
     "listar_activas",
     "contar_por_estado",
+    "listar_atascadas",
     "COLUMNAS_EXCEL",
     "ESTADOS_VALIDOS_EXCEL",
+    "_normalizar_estado",
     "generar_plantilla",
     "HEADER_MASTER",
 )

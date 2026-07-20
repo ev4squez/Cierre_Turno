@@ -197,10 +197,13 @@ class MainController:
             pass  # best-effort
 
     def on_limpiar_form(self) -> None:
-        """El operador toco Limpiar."""
+        """El operador toco Cancelar: descarta TODO (incluyendo la maquina)."""
+        # Si estamos editando una FDS existente, tambien salimos del modo edicion
+        self.win._form._editando_id = None
+        self._selected_maquina = None
+        self.win.set_form_machine(None)
         self.win.reset_form()
-        if self._selected_maquina is not None:
-            self.win.set_form_machine(self._selected_maquina)
+        # El form queda vacio; el operador puede elegir otra maquina o cerrar.
 
     def on_editar_incidencia(self, inc_id: int) -> None:
         """Editar una fila: cargar al form y guardar actualiza en lugar de crear."""
@@ -484,12 +487,27 @@ class MainController:
         )
         dlg.exec()
 
-    def on_settings(self) -> None:
+    def on_settings(self, maquina_preseleccionada: dict | None = None) -> None:
         """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas,
         Tecnicos, Tipos de problema).
+
+        Si ``maquina_preseleccionada`` viene, abre directamente el tab
+        Maquinas con esa fila seleccionada (uso: boton 'Editar' del
+        panel central).
         """
         from ui.settings_dialog import SettingsDialog
         dlg = SettingsDialog(self.win)
+        if maquina_preseleccionada is not None:
+            # Abrir directamente el tab Maquinas (index 2) y seleccionar
+            # el row correspondiente a la maquina dada.
+            try:
+                dlg._tabs.setCurrentIndex(2)
+                maq_tab = dlg._tabs.widget(2)
+                num = str(maquina_preseleccionada.get("numero_maquina", ""))
+                if hasattr(maq_tab, "select_by_numero"):
+                    maq_tab.select_by_numero(num)
+            except Exception:
+                pass  # si falla, abre normal
         def _on_changed() -> None:
             # Refrescar tecnicos desde la DB
             try:
@@ -692,6 +710,7 @@ class MainController:
         self.win.eliminarIncidencia.connect(self.on_eliminar_incidencia)
         self.win.enviarInformeRequested.connect(self.on_enviar_informe)
         self.win.previsualizarInformeRequested.connect(self.on_previsualizar_informe)
+        self.win.editMachineRequested.connect(self.on_settings)
         self.win.settingsRequested.connect(self.on_settings)
         self.win.logoutRequested.connect(self.on_logout)
         self.win.importRequested.connect(self.on_import)

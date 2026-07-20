@@ -205,14 +205,16 @@ class IncidenciaForm(QFrame):
         al = QHBoxLayout(actions)
         al.setContentsMargins(0, 4, 0, 0)
         al.setSpacing(10)
-        self._btn_limpiar = QPushButton("Limpiar")
+        self._btn_limpiar = QPushButton("Cancelar")
         self._btn_limpiar.setObjectName("btnSecondary")
         self._btn_limpiar.setCursor(Qt.PointingHandCursor)
+        self._btn_limpiar.setToolTip("Descartar cambios y volver al estado inicial")
         self._btn_limpiar.clicked.connect(self._on_limpiar)
 
-        self._btn_guardar = QPushButton("  Guardar Registro")
+        self._btn_guardar = QPushButton("  Guardar Registro (Enter)")
         self._btn_guardar.setObjectName("btnPrimary")
         self._btn_guardar.setCursor(Qt.PointingHandCursor)
+        self._btn_guardar.setShortcut("Ctrl+Return")  # atajo bonus
         self._btn_guardar.clicked.connect(self._on_guardar)
         al.addWidget(self._btn_limpiar)
         al.addWidget(self._btn_guardar, 1)
