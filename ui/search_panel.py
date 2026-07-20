@@ -8,11 +8,18 @@ independiente con scroll propio. Mantiene los signals
 
 El metodo ``set_quick_stats`` queda como no-op: el resumen rapido ahora
 lo maneja ``DashboardBar``. Si el controller lo llama igual, no rompe.
+
+Implementacion: los resultados se muestran en un ``QListWidget`` con
+items de altura fija (44px) y un widget custom por item (num + titulo
++ sub + badge de estado). Esto resuelve el problema de la lista
+anterior: el QVBoxLayout con QFrame(items) crecia sin control cuando
+habia 25+ maquinas y los labels wrappeaban a 4-5 lineas, volviendo
+la UI ilegible.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QComboBox,
@@ -20,6 +27,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -27,6 +36,11 @@ from PySide6.QtWidgets import (
 
 from config import ESTADOS_MAQUINA
 from ui.helpers import clear_layout, severity_for_estado, svg
+
+
+# Altura fija de cada item de la lista. Suficiente para que entren
+# titulo + sub + badge en una sola linea, sin wrap.
+ITEM_HEIGHT = 44
 
 
 class SearchPanel(QFrame):
@@ -48,10 +62,11 @@ class SearchPanel(QFrame):
         super().__init__(parent)
         self.setObjectName("searchPanel")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        # Limite de altura razonable: buscador + hasta 4 resultados visibles
-        self.setMaximumHeight(280)
+        # Limite de altura razonable: filtro + buscador + hasta 6
+        # items visibles (6 * 44 = 264px). El resto es scroll nativo
+        # del QListWidget.
+        self.setMaximumHeight(54 + 64 + 6 * ITEM_HEIGHT)  # ~382
 
-        self._result_widgets: list[QFrame] = []
         self._last_results: list[dict] = []
 
         # Historial de busquedas para autocompletar (persistente)
@@ -70,9 +85,6 @@ class SearchPanel(QFrame):
         outer.setSpacing(6)
 
         # --- Filtro de estado (combo chico) -------------------------
-        # Sirve para que el operador pueda restringir la lista sin
-        # tipear nada. Ademas es el sink de los clicks de las cards
-        # del dashboard (Total / Operativas / En observacion / etc).
         filter_row = QFrame()
         fr = QHBoxLayout(filter_row)
         fr.setContentsMargins(0, 0, 0, 0)
@@ -84,30 +96,23 @@ class SearchPanel(QFrame):
         )
         fr.addWidget(lbl)
         self._cb_filtro_estado = QComboBox()
-        # "Todos" + los estados canonicos del casino
         self._cb_filtro_estado.addItem("Todos")
         for est in ESTADOS_MAQUINA:
             self._cb_filtro_estado.addItem(est)
-        self._cb_filtro_estado.setCurrentIndex(0)  # "Todos"
+        self._cb_filtro_estado.setCurrentIndex(0)
         self._cb_filtro_estado.currentTextChanged.connect(
             self._on_filtro_cambiado
         )
-        # Mas compacto que el default para que entre en la misma fila
-        # que el label sin estirar demasiado el panel.
         self._cb_filtro_estado.setMaximumWidth(160)
         fr.addWidget(self._cb_filtro_estado, 1)
         outer.addWidget(filter_row)
 
-        # Search box (icon + input + clear icon)
+        # --- Search box ---------------------------------------------
         search_wrap = QFrame()
         search_layout = QHBoxLayout(search_wrap)
         search_layout.setContentsMargins(0, 0, 0, 0)
         search_layout.setSpacing(0)
 
-        # El icono va DENTRO del QLineEdit via padding-left, pero el placeholder
-        # lo pintamos via stylesheet. Para mantener la API que usa el smoke test
-        # (`w._search_panel._search.setText`), creamos el QLineEdit normalmente
-        # y le ponemos el icono superpuesto en un contenedor.
         icon = QLabel()
         icon.setObjectName("searchInputIcon")
         icon.setPixmap(svg("search", 16).pixmap(16, 16))
@@ -118,148 +123,144 @@ class SearchPanel(QFrame):
         self._search.textChanged.connect(self._on_text_changed)
         self._search.returnPressed.connect(self._on_enter)
 
-        # Input row: icon absolute + input
         input_row = QFrame()
         input_row.setObjectName("searchInputRow")
         ir = QHBoxLayout(input_row)
         ir.setContentsMargins(0, 0, 0, 0)
         ir.setSpacing(0)
         ir.addWidget(self._search, 1)
-        # El icono decorativo queda como label invisible para conservar la
-        # jerarquia visual del HTML; el icono real lo inyecta el QSS via
-        # background-image en searchInput. Esto evita superposiciones en Qt.
 
         outer.addWidget(input_row)
-        # El icono lo agrega el QSS en background para no romper el padding
 
-        # Hint (placeholder del conteo)
+        # Hint
         self._hint = QLabel("")
         self._hint.setObjectName("searchHint")
         outer.addWidget(self._hint)
 
-        # Label resultados
+        # --- Label resultados ---------------------------------------
         self._results_label = QLabel("RESULTADOS")
         self._results_label.setObjectName("resultsLabel")
         outer.addWidget(self._results_label)
 
-        # Lista de resultados
-        self._results_host = QFrame()
-        self._results_layout = QVBoxLayout(self._results_host)
-        self._results_layout.setContentsMargins(0, 0, 0, 0)
-        self._results_layout.setSpacing(4)
-        self._results_layout.addStretch(1)
-        outer.addWidget(self._results_host)
-
-        outer.addStretch(1)
+        # --- Lista de resultados: QListWidget con scroll nativo ----
+        # Reemplaza el QVBoxLayout anterior que crecia sin control.
+        self._list = QListWidget()
+        self._list.setObjectName("searchResultsList")
+        self._list.setUniformItemSizes(True)  # performance + consistencia
+        self._list.setWordWrap(False)         # no wrappear titulos
+        self._list.setTextElideMode(Qt.ElideRight)  # "..." si no entra
+        self._list.setSelectionMode(QListWidget.SingleSelection)
+        self._list.setFocusPolicy(Qt.NoFocus)  # el foco es del QLineEdit
+        # Scroll bar vertical siempre visible cuando hay overflow
+        self._list.setVerticalScrollMode(QListWidget.ScrollPerPixel)
+        self._list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # El item clickeado emite machineSelected con la maquina guardada
+        # en UserRole. La navegacion con flechas del teclado la maneja
+        # el QListWidget nativamente.
+        self._list.itemClicked.connect(self._on_item_clicked)
+        # Si cambia la seleccion por teclado/flechas, emitimos al toque
+        self._list.currentItemChanged.connect(self._on_current_changed)
+        outer.addWidget(self._list, 1)
 
     # --- API --------------------------------------------------------------
 
     def set_quick_stats(self, fds: int, pendientes: int, resueltas: int,
                         *, en_observacion: int = 0) -> None:
-        """No-op: el resumen rapido lo maneja ``DashboardBar``.
-
-        Se conserva por compatibilidad con el controller, que llama
-        ``win.set_quick_stats(...)`` despues de refrescar la lista.
-        """
+        """No-op: el resumen rapido lo maneja ``DashboardBar``."""
         return None
 
     def set_results(self, maquinas: list[dict]) -> None:
         """Reemplaza los resultados mostrados."""
         self._last_results = list(maquinas)
-        clear_layout(self._results_host)
+        self._list.clear()
 
         if not maquinas:
             self._hint.setText("Sin coincidencias")
             self._results_label.setVisible(False)
-            spacer = QFrame()
-            self._results_layout.addWidget(spacer)
-            self._results_layout.addStretch(1)
             return
 
         self._hint.setText(f"{len(maquinas)} coincidencias encontradas")
         self._results_label.setVisible(True)
 
         for idx, m in enumerate(maquinas):
-            item = self._build_result_item(m, active=(idx == 0))
-            self._result_widgets.append(item)
-            self._results_layout.addWidget(item)
-        self._results_layout.addStretch(1)
+            item = QListWidgetItem(self._list)
+            # Guardamos la maquina en UserRole para recuperarla en click
+            item.setData(Qt.UserRole, m)
+            # Tamano fijo por item (no wrap)
+            item.setSizeHint(QSize(0, ITEM_HEIGHT))
+            # El widget custom vive dentro del item
+            widget = self._build_result_widget(m, active=(idx == 0))
+            self._list.addItem(item)
+            self._list.setItemWidget(item, widget)
 
-    def _build_result_item(self, m: dict, *, active: bool) -> QFrame:
+        # Marcamos el primer item como current (asi las flechas
+        # arrancan desde ahi y Enter lo selecciona).
+        if self._list.count() > 0:
+            self._list.setCurrentRow(0)
+
+    def _build_result_widget(self, m: dict, *, active: bool) -> QFrame:
+        """Construye el QFrame que vive dentro de un QListWidgetItem.
+
+        Layout: [numero] [titulo / sub apilados] [badge estado]
+        Altura fija (ITEM_HEIGHT), texto sin wrap.
+        """
         item = QFrame()
         item.setObjectName("resultItem")
         item.setProperty("class", "resultItem")
         item.setProperty("active", "true" if active else "false")
         item.setCursor(Qt.PointingHandCursor)
-        item.setProperty("maquina", m)
+        item.setFixedHeight(ITEM_HEIGHT)
 
         h = QHBoxLayout(item)
-        h.setContentsMargins(10, 8, 10, 8)
-        h.setSpacing(12)
+        h.setContentsMargins(10, 4, 10, 4)
+        h.setSpacing(10)
 
+        # Numero de maquina (chip)
         num = QLabel(str(m.get("numero_maquina", "")))
         num.setProperty("class", "resultNum")
         num.setAlignment(Qt.AlignCenter)
-        num.setFixedSize(44, 34)
+        num.setFixedSize(44, ITEM_HEIGHT - 12)
+        # Elitros: si el numero no entra, lo cortamos con "..."
+        num.setTextInteractionFlags(Qt.NoTextInteraction)
 
+        # Texto: titulo + sub
         text = QFrame()
+        text.setStyleSheet("background: transparent;")
         text_v = QVBoxLayout(text)
         text_v.setContentsMargins(0, 0, 0, 0)
-        text_v.setSpacing(2)
-        title = QLabel(f"{m.get('marca','')} {m.get('modelo','')}".strip())
-        title.setProperty("class", "resultTitle")
-        sub = QLabel(f"{m.get('isla','')} - Sector {m.get('sector','')}".strip(" -"))
-        sub.setProperty("class", "resultSub")
-        text_v.addWidget(title)
-        text_v.addWidget(sub)
+        text_v.setSpacing(0)
 
-        # Badge de estado (compacto)
+        titulo = f"{m.get('marca', '')} {m.get('modelo', '')}".strip()
+        sub = f"{m.get('isla', '')} - Sector {m.get('sector', '')}".strip(" -")
+
+        lbl_titulo = QLabel(titulo or "—")
+        lbl_titulo.setProperty("class", "resultTitle")
+        lbl_titulo.setWordWrap(False)
+        lbl_titulo.setTextInteractionFlags(Qt.NoTextInteraction)
+
+        lbl_sub = QLabel(sub or "")
+        lbl_sub.setProperty("class", "resultSub")
+        lbl_sub.setWordWrap(False)
+        lbl_sub.setTextInteractionFlags(Qt.NoTextInteraction)
+
+        text_v.addWidget(lbl_titulo)
+        text_v.addWidget(lbl_sub)
+
+        # Badge de estado
         estado = m.get("estado") or "Operativa"
         badge = QLabel(estado)
         badge.setProperty("class", "badge")
         badge.setProperty("severity", severity_for_estado(estado))
         badge.setAlignment(Qt.AlignCenter)
+        badge.setWordWrap(False)
+        badge.setTextInteractionFlags(Qt.NoTextInteraction)
+        badge.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
 
         h.addWidget(num)
         h.addWidget(text, 1)
         h.addWidget(badge)
 
-        item.mousePressEvent = lambda _e, mm=m: self._on_item_clicked(mm)  # type: ignore[assignment]
         return item
-
-    def _on_item_clicked(self, m: dict) -> None:
-        # Limpiar 'active' en todos los widgets vivos.
-        # Algunos pueden haber sido eliminados por un set_results()
-        # concurrente o por Qt al re-paint; en ese caso los salteamos
-        # en lugar de tirar RuntimeError.
-        vivos: list[QFrame] = []
-        for w in self._result_widgets:
-            try:
-                # Cualquier llamada a un metodo del widget tira RuntimeError
-                # si el objeto C++ ya fue borrado.
-                w.setProperty("active", "false")
-                w.style().unpolish(w)
-                w.style().polish(w)
-                vivos.append(w)
-            except RuntimeError:
-                continue
-        self._result_widgets = vivos
-        for w in vivos:
-            try:
-                if w.property("maquina") is m:
-                    w.setProperty("active", "true")
-                    w.style().unpolish(w)
-                    w.style().polish(w)
-            except RuntimeError:
-                continue
-        self._search.clearFocus()
-        # Guardamos la busqueda en el historial para autocompletar
-        # la proxima vez (si el operador escribio algo, no si solo
-        # uso Enter sin tocar el texto).
-        q = self._search.text().strip()
-        if q:
-            self._history.agregar(q)
-        self.machineSelected.emit(m)
 
     def _on_text_changed(self, text: str) -> None:
         self.queryChanged.emit(text)
@@ -268,22 +269,39 @@ class SearchPanel(QFrame):
         """Re-emite el cambio de filtro para que el controller refrezque."""
         self.filterChanged.emit(val or "Todos")
 
-    # --- API --------------------------------------------------------------
+    def _on_item_clicked(self, item: QListWidgetItem) -> None:
+        """Handler de click: emite machineSelected con el dict del item."""
+        m = item.data(Qt.UserRole) if item is not None else None
+        if m is None:
+            return
+        # Historial
+        q = self._search.text().strip()
+        if q:
+            self._history.agregar(q)
+        # Sacamos foco del input (la seleccion ya quedo visible)
+        self._search.clearFocus()
+        self.machineSelected.emit(m)
+
+    def _on_current_changed(self, current, previous) -> None:
+        """Cuando cambia la seleccion por teclado, emitimos al toque.
+
+        Asi el operador puede navegar con flechas y ver la maquina
+        en el panel central sin tener que hacer click.
+        """
+        if current is None:
+            return
+        m = current.data(Qt.UserRole)
+        if m is None:
+            return
+        self.machineSelected.emit(m)
 
     def set_filtro_estado(self, estado: str) -> None:
-        """Cambia el combo de filtro externamente (sin disparar signal).
-
-        Usado por el controller cuando el operador hace click en una
-        card del dashboard. No emitimos filterChanged porque la
-        llamada ya viene del controller, que refresca la lista
-        inmediatamente.
-        """
+        """Cambia el combo de filtro externamente (sin disparar signal)."""
         if not estado:
             estado = "Todos"
         idx = self._cb_filtro_estado.findText(estado)
         if idx < 0:
-            return  # estado desconocido, no tocamos el combo
-        # blockSignals para no disparar filterChanged en bucle
+            return
         self._cb_filtro_estado.blockSignals(True)
         try:
             self._cb_filtro_estado.setCurrentIndex(idx)
@@ -295,61 +313,27 @@ class SearchPanel(QFrame):
         return self._cb_filtro_estado.currentText() or "Todos"
 
     def _on_enter(self) -> None:
-        if self._last_results:
-            q = self._search.text().strip()
-            if q:
-                self._history.agregar(q)
-            self.machineSelected.emit(self._last_results[0])
+        """Enter en el input: selecciona el item actual de la lista."""
+        item = self._list.currentItem()
+        if item is None:
+            return
+        m = item.data(Qt.UserRole)
+        if m is None:
+            return
+        q = self._search.text().strip()
+        if q:
+            self._history.agregar(q)
+        self.machineSelected.emit(m)
 
     def focus_search(self) -> None:
         self._search.setFocus()
         self._search.selectAll()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: D401
-        if event.key() in (Qt.Key_Down, Qt.Key_Up):
-            self._navigate_results(event.key())
-            return
+        # Las flechas se manejan nativamente en el QListWidget cuando
+        # el foco esta ahi. Si el foco esta en el QLineEdit, no
+        # intervenimos: dejamos que Qt haga lo suyo.
         super().keyPressEvent(event)
-
-    def _navigate_results(self, key: int) -> None:
-        if not self._last_results:
-            return
-        # Filtrar widgets muertos antes de iterar (ver _on_item_clicked).
-        vivos = []
-        for w in self._result_widgets:
-            try:
-                _ = w.property("active")
-                vivos.append(w)
-            except RuntimeError:
-                continue
-        self._result_widgets = vivos
-        if not vivos:
-            return
-        actual_id = next(
-            (i for i, w in enumerate(vivos) if w.property("active") == "true"),
-            -1,
-        )
-        if key == Qt.Key_Down:
-            new = min(actual_id + 1, len(vivos) - 1)
-        else:
-            new = max(actual_id - 1, 0)
-        if new < 0:
-            return
-        for w in vivos:
-            try:
-                w.setProperty("active", "false")
-                w.style().unpolish(w)
-                w.style().polish(w)
-            except RuntimeError:
-                continue
-        chosen = vivos[new]
-        try:
-            chosen.setProperty("active", "true")
-            chosen.style().unpolish(chosen)
-            chosen.style().polish(chosen)
-        except RuntimeError:
-            return
-        self.machineSelected.emit(self._last_results[new])
 
 
 __all__ = ("SearchPanel",)
