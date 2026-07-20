@@ -235,14 +235,37 @@ def _safe_filename(s: str) -> str:
 
 
 def _log(evento: str, data: dict) -> None:
-    """Log JSON-line simple en ``logs/correo.log``."""
+    """Log JSON-line simple en ``logs/correo.log`` con rotacion automatica.
+
+    Cuando el archivo supera ``_LOG_MAX_BYTES`` (5 MB por defecto),
+    se renombra a ``correo.log.1`` y se empieza uno nuevo. Si ya
+    existe ``correo.log.1``, se borra primero (rotacion de 1 nivel:
+    suficiente para auditoria de errores sin acumular gigas).
+    """
     try:
-        LOGS_DIR.mkdir(parents=True, exist_ok=True)
         import json
-        with (LOGS_DIR / "correo.log").open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"ts": datetime.now().isoformat(), "event": evento, **data}, ensure_ascii=False) + "\n")
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        log_path = LOGS_DIR / "correo.log"
+        # Rotar si supera el tamano maximo
+        if log_path.exists():
+            try:
+                if log_path.stat().st_size >= _LOG_MAX_BYTES:
+                    backup = LOGS_DIR / "correo.log.1"
+                    if backup.exists():
+                        backup.unlink()
+                    log_path.rename(backup)
+            except OSError:
+                pass  # si no podemos rotar, seguimos con el log grande
+        with log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(
+                {"ts": datetime.now().isoformat(), "event": evento, **data},
+                ensure_ascii=False,
+            ) + "\n")
     except OSError:
         pass
+
+
+_LOG_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
 # ---------------------------------------------------------------------------

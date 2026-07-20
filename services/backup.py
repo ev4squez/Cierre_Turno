@@ -133,4 +133,48 @@ def restaurar(backup_path: Path,
         return False
 
 
-__all__ = ("hacer_backup", "listar_backups", "obtener_ultimo_backup", "restaurar")
+def backup_pre_operacion(etiqueta: str = "") -> Optional[Path]:
+    """Hace un backup inmediato antes de una operacion destructiva.
+
+    Pensado para llamarse desde el controller justo antes de:
+      - eliminar una maquina del catalogo
+      - vaciar / resetear la DB
+      - importar un Excel grande (que pisa maquinas existentes)
+      - cualquier otra operacion que pueda dejar la DB en un
+        estado que el operador quiera deshacer.
+
+    El backup se guarda en una subcarpeta ``backups_pre_op/`` con
+    la etiqueta de la operacion en el nombre, asi el operador
+    puede identificarlo despues. Best-effort: si falla, devuelve
+    None y la operacion prosigue (no bloqueamos al operador por
+    un problema de backup).
+
+    Parametros
+    ----------
+    etiqueta:
+        Sufijo descriptivo para el archivo. Ej: 'pre_eliminar_maq_1023',
+        'pre_importar_excel', etc. Se sanitiza (sin espacios ni
+        caracteres raros).
+    """
+    safe_label = "".join(
+        c if c.isalnum() or c in "-_" else "_" for c in (etiqueta or "")
+    )[:48]
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    suffix = f"_{safe_label}" if safe_label else ""
+    destino_dir = BACKUPS_DIR / "backups_pre_op"
+    try:
+        return hacer_backup(
+            destino_dir=destino_dir,
+            max_backups=50,  # retenemos mas en pre-op (auditoria SCJ)
+        )
+    except Exception:
+        return None
+
+
+__all__ = (
+    "hacer_backup",
+    "listar_backups",
+    "obtener_ultimo_backup",
+    "restaurar",
+    "backup_pre_operacion",
+)

@@ -74,6 +74,11 @@ backups/muestra_informe_*.html
 
 # Log generado por smoke tests
 logs/correo.log
+# Log rotado (cuando correo.log supera 5MB se renombra a correo.log.1)
+logs/correo.log.1
+# Carpeta de backups pre-op (audit SCJ)
+backups/backups_pre_op/
+backups/backups_pre_restore/
 
 # Lock de uv
 uv.lock

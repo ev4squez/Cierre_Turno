@@ -125,7 +125,10 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="SistemaFDS",
+    # Version del sistema. La lee desde app.py asi no hay que
+    # hardcodearla en 2 lugares. Si actualizas __version__ en
+    # app.py, el .exe generado tendra ese nombre.
+    name=f"SistemaFDS_v{__import__('app').__version__}",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
