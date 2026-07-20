@@ -165,6 +165,142 @@ def _build_fila_pendiente(r: dict, idx: int, total: int) -> str:
               </tr>'''
 
 
+# Paleta para el badge 'Pendiente si/no' (color rojo para 'si',
+# verde apagado para 'no' - complemento de los badges de FDS).
+def _badge_sn(sn: bool, *, si_label: str = "si", no_label: str = "no") -> str:
+    """Renderiza un badge si/no consistente con el resto del informe.
+
+    'si'  -> fondo rojizo, texto rojo.
+    'no'  -> fondo verdoso apagado, texto verde apagado.
+    """
+    if sn:
+        color, bg, dot = "#DC2626", "#FDECEC", "🔴"
+        txt = si_label
+    else:
+        color, bg, dot = "#64748B", "#F1F4F8", "⚪"
+        txt = no_label
+    return (
+        f'<span style="display:inline-block; background-color:{bg}; '
+        f'color:{color}; font-family:&apos;Segoe UI&apos;,Arial,sans-serif; '
+        f'font-size:11px; font-weight:700; padding:3px 8px; '
+        f'border-radius:999px; white-space:nowrap;">{dot} {_esc(txt)}</span>'
+    )
+
+
+def _build_fila_actividad(r: dict, idx: int, total: int) -> str:
+    """Renderiza una fila de la tabla de Actividades del dia.
+
+    Columnas: Hora, Tarea, Area, Tecnico, Pendiente.
+    Es mas compacta que la tabla de FDS porque el detalle largo de
+    cada actividad ya esta cubierto por el modulo en si; aca solo
+    se muestra el resumen 'que se hizo y por quien'.
+    """
+    bg = "#FFFFFF" if idx % 2 == 0 else "#F8FAFC"
+    border_bottom = " border-bottom:1px solid #EBEEF3;" if idx == total - 1 else ""
+    hora = _esc(r.get("hora") or "")
+    tarea = _esc(r.get("tarea") or "")
+    area = _esc(r.get("area") or "")
+    tecnico = _esc(r.get("tecnico") or "")
+    pendiente = bool(r.get("pendiente_sn"))
+    return f'''<tr style="background-color:{bg};">
+                <td style="padding:9px 10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#1B2430; border-top:1px solid #EBEEF3;{border_bottom}">{hora}</td>
+                <td style="padding:9px 10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; font-weight:600; color:#1B2430; border-top:1px solid #EBEEF3;{border_bottom}">{tarea}</td>
+                <td style="padding:9px 10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#475569; border-top:1px solid #EBEEF3;{border_bottom}">{area}</td>
+                <td style="padding:9px 10px; font-family:'Segoe UI',Arial,sans-serif; font-size:12.5px; color:#475569; border-top:1px solid #EBEEF3;{border_bottom}">{tecnico}</td>
+                <td style="padding:9px 10px; border-top:1px solid #EBEEF3;{border_bottom}">{_badge_sn(pendiente)}</td>
+              </tr>'''
+
+
+def _build_actividades_block(actividades: list[dict]) -> str:
+    """Bloque HTML 'Actividades del dia' que va arriba de la tabla de FDS.
+
+    Estructura:
+      - Header 'Actividades del dia' con icono de calendario
+      - KPI grande 'Tareas hoy: N' (con N y, si hay, M pendientes)
+      - Tabla compacta (Hora | Tarea | Area | Tecnico | Pendiente)
+      - Si no hay actividades: una sola fila 'Sin actividades registradas
+        en el dia' en letra gris centrada.
+
+    Estilo consistente con el resto del informe (mismas fonts, colores,
+    border-radius 10px, mismo padding lateral 32px).
+    """
+    n = len(actividades)
+    n_pend = sum(1 for a in actividades if a.get("pendiente_sn"))
+    if n == 0:
+        # Sin actividades: el bloque igual aparece con un mensaje
+        # para que el destinatario vea que el modulo esta al dia
+        # (asi no se confunde con un fallo tecnico).
+        header = (
+            f'<tr><td style="padding: 18px 32px 4px 32px;" class="p-mobile">'
+            f'<span style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; '
+            f'font-size:13px; font-weight:700; color:#1B2430; text-transform:'
+            f'uppercase; letter-spacing:0.4px;">Actividades del d&iacute;a</span>'
+            f'</td></tr>'
+        )
+        kpi = (
+            f'<tr><td style="padding: 6px 32px 4px 32px;" class="p-mobile">'
+            f'<span style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; '
+            f'font-size:13px; color:#475569;">'
+            f'<b style="color:#1B2430; font-size:18px;">0</b> tareas registradas hoy.'
+            f'</span></td></tr>'
+        )
+        tabla = (
+            f'<tr><td style="padding: 4px 26px 14px 26px;" class="p-mobile">'
+            f'<table role="presentation" width="100%" cellpadding="0" '
+            f'cellspacing="0" border="0" style="border:1px solid #E1E6ED; '
+            f'border-radius:10px; overflow:hidden;">'
+            f'<tr><td style="padding:18px; text-align:center; color:#94A3B8; '
+            f'font-family:&apos;Segoe UI&apos;,Arial,sans-serif; font-size:12.5px;">'
+            f'Sin actividades registradas en el d&iacute;a.</td></tr>'
+            f'</table></td></tr>'
+        )
+        return header + kpi + tabla
+
+    # Con actividades: KPI + tabla
+    header = (
+        f'<tr><td style="padding: 18px 32px 4px 32px;" class="p-mobile">'
+        f'<span style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; '
+        f'font-size:13px; font-weight:700; color:#1B2430; text-transform:'
+        f'uppercase; letter-spacing:0.4px;">Actividades del d&iacute;a</span>'
+        f'</td></tr>'
+    )
+    # KPI: Tareas hoy + (si hay) pendientes en otro color
+    kpi_pend = ""
+    if n_pend > 0:
+        kpi_pend = (
+            f' &nbsp;·&nbsp; <b style="color:#DC2626;">{n_pend}</b> '
+            f'pendiente{"s" if n_pend != 1 else ""}'
+        )
+    kpi = (
+        f'<tr><td style="padding: 6px 32px 8px 32px;" class="p-mobile">'
+        f'<span style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; '
+        f'font-size:13px; color:#475569;">'
+        f'<b style="color:#1B2430; font-size:18px;">{n}</b> '
+        f'tarea{"s" if n != 1 else ""} registrada{"s" if n != 1 else ""} hoy.'
+        f'{kpi_pend}'
+        f'</span></td></tr>'
+    )
+    filas = "\n".join(
+        _build_fila_actividad(a, i, n) for i, a in enumerate(actividades)
+    )
+    tabla = (
+        f'<tr><td style="padding: 4px 26px 14px 26px;" class="p-mobile">'
+        f'<table role="presentation" width="100%" cellpadding="0" '
+        f'cellspacing="0" border="0" style="border:1px solid #E1E6ED; '
+        f'border-radius:10px; overflow:hidden;">'
+        f'<tr style="background-color:#F1F4F8;">'
+        f'<th align="left" style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; font-size:10.5px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.3px; padding:10px 10px;">Hora</th>'
+        f'<th align="left" style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; font-size:10.5px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.3px; padding:10px 10px;">Tarea</th>'
+        f'<th align="left" style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; font-size:10.5px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.3px; padding:10px 10px;">&Aacute;rea</th>'
+        f'<th align="left" style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; font-size:10.5px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.3px; padding:10px 10px;">T&eacute;cnico</th>'
+        f'<th align="left" style="font-family:&apos;Segoe UI&apos;,Arial,sans-serif; font-size:10.5px; font-weight:700; color:#64748B; text-transform:uppercase; letter-spacing:0.3px; padding:10px 10px;">Pendiente</th>'
+        f'</tr>'
+        f'{filas}'
+        f'</table></td></tr>'
+    )
+    return header + kpi + tabla
+
+
 def _format_fecha_larga(fecha: date) -> str:
     """16 de julio de 2026."""
     meses = [
@@ -195,6 +331,7 @@ def render_informe(
     firmante: str | None = None,
     total_maquinas_catalogo: int | None = None,
     total_operativas_catalogo: int | None = None,
+    actividades: list[dict] | None = None,
 ) -> str:
     """Devuelve el HTML final listo para enviar.
 
@@ -462,6 +599,14 @@ def render_informe(
     # 5. Tabla principal
     html_out = _replace_tabla_principal(html_out, filas_tabla)
 
+    # 5b. Bloque 'Actividades del dia' (arriba de la tabla de FDS).
+    # Si no se pasa 'actividades', igual inyectamos el bloque vacio
+    # para que el destinatario vea que el modulo esta al dia.
+    if actividades is None:
+        actividades = []
+    actividades_html = _build_actividades_block(actividades)
+    html_out = _inject_actividades(html_out, actividades_html)
+
     # 6. Resultado de la jornada
     html_out = _replace_resultado(html_out, total, resumen_html)
 
@@ -634,6 +779,34 @@ def _replace_header_branding(
     )
     html = patron_subtitulo.sub(subtitulo_nuevo, html, count=1)
     return html
+
+
+def _inject_actividades(html: str, actividades_html: str) -> str:
+    """Inyecta el bloque 'Actividades del dia' antes del bloque de
+    'Detalle de incidencias' (la tabla de FDS).
+
+    Anchor unico: el comentario ``<!-- ============ DETALLE DE
+    INCIDENCIAS ============ -->`` que ya existe en el template.
+    Si el anchor no aparece (template rediseñado), levantamos un
+    error explicito en vez de un no-op silencioso: es un caso
+    previsto en la pitfall "str.find() fails silently" del skill
+    render-existing-template-by-replace.
+    """
+    anchor = "<!-- ============ DETALLE DE INCIDENCIAS ============ -->"
+    if html.count(anchor) != 1:
+        raise RuntimeError(
+            f"Anchor de 'Actividades del dia' no encontrado o duplicado en "
+            f"el template (encontrado {html.count(anchor)} veces). Revisar "
+            f"que el comentario {anchor!r} exista exactamente una vez."
+        )
+    # El bloque va con su propio tr/td para mantener la estructura
+    # del template original (cada seccion es un <tr><td>).
+    bloque = (
+        f"\n        <!-- ============ ACTIVIDADES DEL DIA ============ -->\n"
+        f"        {actividades_html}\n"
+        f"        {anchor}"
+    )
+    return html.replace(anchor, bloque, 1)
 
 
 def _inject_enviado_a(html: str, enviado_a_html: str) -> str:

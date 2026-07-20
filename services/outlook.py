@@ -278,6 +278,7 @@ def enviar_informe_turno(
     empresa: dict | None = None,
     firmante: str | None = None,
     total_maquinas_catalogo: int | None = None,
+    actividades: list[dict] | None = None,
 ) -> dict[str, Any]:
     """Helper que une render + envio. Usado por el controller.
 
@@ -319,6 +320,7 @@ def enviar_informe_turno(
         destinatarios=destinatarios,
         cc=cc,
         firmante=firmante,
+        actividades=actividades,
     )
     asunto = armar_asunto(asunto_template, fecha=resumen.fecha, turno=turno_etiqueta)
     return enviar_informe(

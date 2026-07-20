@@ -419,6 +419,15 @@ class MainController:
             tiempo_real = tiempo_promedio_resolucion_min(resumen.registros)
             total_maquinas = total_maquinas_catalogo(solo_activas=True)
 
+            # Actividades Diarias del turno: se renderizan en un bloque
+            # aparte arriba de la tabla de FDS. Traemos todas (el operador
+            # puede haber registrado varias tareas ademas de las FDS).
+            try:
+                from services import actividades_db as svc_act
+                actividades = svc_act.listar_por_turno(hoy, self._turno_actual)
+            except Exception:
+                actividades = []
+
             # El nombre del firmante va tanto al "Enviado por" del HTML
             # (parametro ``usuario``) como al bloque firma al pie
             # (parametro ``firmante``). Asi el destinatario sabe de
@@ -436,6 +445,7 @@ class MainController:
                 logo_path=logo_path,
                 tiempo_promedio_min=tiempo_real,
                 total_maquinas_catalogo=total_maquinas,
+                actividades=actividades,
             )
         finally:
             self.win.set_sending(False)
@@ -519,6 +529,12 @@ class MainController:
         )
         tiempo_real = tiempo_promedio_resolucion_min(registros)
         total_maquinas = total_maquinas_catalogo(solo_activas=True)
+        # Actividades Diarias del turno (mismo bloque que en envio).
+        try:
+            from services import actividades_db as svc_act
+            actividades = svc_act.listar_por_turno(hoy, self._turno_actual)
+        except Exception:
+            actividades = []
         # Para preview usamos el usuario actual o "Preview" como fallback
         firmante_preview = ""
         try:
@@ -543,6 +559,7 @@ class MainController:
             cc=cc,
             firmante=firmante_preview,
             total_maquinas_catalogo=total_maquinas,
+            actividades=actividades,
         )
         # Calcular el asunto igual que haria enviar_informe_turno
         from services.outlook import armar_asunto
