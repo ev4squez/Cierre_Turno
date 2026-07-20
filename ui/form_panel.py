@@ -438,6 +438,12 @@ class IncidenciaForm(QFrame):
         # Feedback auditivo nativo del sistema (sin archivos externos)
         from PySide6.QtWidgets import QApplication
         QApplication.beep()
+        # Feedback visual del boton: cambia a 'Guardado OK' 1.5s y
+        # vuelve a 'Guardar actividad'. Asi el operador sabe que el
+        # guardado paso, sin tener que esperar el QMessageBox del
+        # controller (que puede tardar si hay dialogs modales
+        # abriendose).
+        self._set_btn_guardado_ok()
         self.guardar.emit(data)
 
     def _mark_error(self, widget, on: bool) -> None:
@@ -449,6 +455,38 @@ class IncidenciaForm(QFrame):
     def _on_limpiar(self) -> None:
         self.reset_fields()
         self.limpiar.emit()
+
+    def _set_btn_guardado_ok(self) -> None:
+        """Cambia el boton Guardar a 'Guardado OK' verde 1.5s y vuelve.
+
+        Es feedback visual instantaneo para que el operador sepa
+        que el guardado paso. El QMessageBox.success del controller
+        aparece despues y es el feedback 'largo' que confirma con
+        detalle; este es el feedback 'corto' e inmediato.
+        """
+        try:
+            from PySide6.QtCore import QTimer
+            self._btn_guardar.setText("  Guardado OK")
+            self._btn_guardar.setProperty("saved", "true")
+            self._btn_guardar.style().unpolish(self._btn_guardar)
+            self._btn_guardar.style().polish(self._btn_guardar)
+            # Single shot: vuelve al texto original despues de 1.5s
+            QTimer.singleShot(
+                1500,
+                lambda: self._restore_btn_guardar(),
+            )
+        except Exception:
+            pass
+
+    def _restore_btn_guardar(self) -> None:
+        """Restaura el boton Guardar a su estado normal."""
+        try:
+            self._btn_guardar.setText("  Guardar actividad (Enter)")
+            self._btn_guardar.setProperty("saved", "false")
+            self._btn_guardar.style().unpolish(self._btn_guardar)
+            self._btn_guardar.style().polish(self._btn_guardar)
+        except Exception:
+            pass
 
 
 __all__ = ("IncidenciaForm",)

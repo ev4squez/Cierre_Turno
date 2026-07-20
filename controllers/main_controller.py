@@ -306,12 +306,69 @@ class MainController:
         # lugar de INSERT.
         self.win._form._editando_id = inc_id
 
+    def on_duplicar_incidencia(self, inc_id: int) -> None:
+        """Duplicar una fila: carga los datos al form en modo ALTA
+        (no edicion) para que el operador pueda guardar una nueva
+        FDS con los mismos datos. Util cuando la misma maquina se
+        reincio varias veces en el turno.
+        """
+        inc = svc_inc.obtener(inc_id)
+        if inc is None:
+            return
+        # Cargar maquina en el buscador (misma logica que editar)
+        m = svc_maq.obtener_por_numero(inc["numero_maquina"])
+        if m is not None:
+            self._selected_maquina = m
+            self.win.show_machine(m)
+            self.win.set_form_machine(m)
+        else:
+            self._selected_maquina = None
+            self.win.set_form_machine(None)
+        # Pre-llenar los mismos campos que en editar
+        self.win._form._cb_tecnico["widget"].setCurrentText(inc["tecnico"])
+        tipo = inc.get("problema") or ""
+        idx_tipo = self.win._form._cb_tipo["widget"].findText(tipo)
+        if idx_tipo >= 0:
+            self.win._form._cb_tipo["widget"].setCurrentIndex(idx_tipo)
+        self.win._form._ta_motivo["widget"].setPlainText(inc.get("motivo_fuera_servicio", ""))
+        self.win._form._ta_accion["widget"].setPlainText(inc.get("accion_realizada", ""))
+        self.win._form._cb_estado["widget"].setCurrentText(inc.get("estado_final", "Fuera de Servicio"))
+        self.win._form._ta_obs.set_text(inc.get("observaciones", ""))
+        # CLAVE: en duplicar NO seteamos _editando_id, asi el guardado
+        # crea una fila nueva en vez de pisar la original. Y
+        # refrescamos la fecha/hora para que sea 'ahora' (no la de
+        # la incidencia original que ya quedo atras).
+        self.win._form._editando_id = None
+        try:
+            from datetime import datetime
+            self.win._form._in_fecha["widget"].setText(datetime.now().strftime("%d/%m/%Y"))
+            # La hora se actualiza en el siguiente Guardar (datetime.now()).
+        except Exception:
+            pass
+        # Foco en motivo para que el operador tipee la variacion y confirme
+        self.win._form._ta_motivo["widget"].setFocus()
+
     def on_eliminar_incidencia(self, inc_id: int) -> None:
-        """Eliminar con confirmacion."""
+        """Eliminar con confirmacion explicita (muestra que se borra)."""
+        # Traemos la incidencia para que el mensaje sea especifico:
+        # 'Eliminar la FDS de la maquina 1023 (Atasco) del turno Noche?'
+        # Asi el operador sabe exactamente que esta borrando.
+        inc = svc_inc.obtener(inc_id)
+        if inc is None:
+            return
+        maquina = inc.get("numero_maquina", "?")
+        problema = inc.get("problema", "sin problema")
+        detalle = ""
+        if inc.get("motivo_fuera_servicio"):
+            detalle = f" - {inc['motivo_fuera_servicio'][:60]}"
+            if len(inc["motivo_fuera_servicio"]) > 60:
+                detalle += "..."
         res = QMessageBox.question(
             self.win,
             "Eliminar incidencia",
-            f"Eliminar la incidencia #{inc_id}? Esta accion no se puede deshacer.",
+            f"Eliminar la FDS de la maquina <b>{maquina}</b> "
+            f"(<i>{problema}</i>{detalle})?<br><br>"
+            f"Esta accion no se puede deshacer.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
@@ -990,6 +1047,7 @@ class MainController:
         self.win.limpiarForm.connect(self.on_limpiar_form)
         self.win.editarIncidencia.connect(self.on_editar_incidencia)
         self.win.eliminarIncidencia.connect(self.on_eliminar_incidencia)
+        self.win.duplicarIncidencia.connect(self.on_duplicar_incidencia)
         self.win.enviarInformeRequested.connect(self.on_enviar_informe)
         self.win.previsualizarInformeRequested.connect(self.on_previsualizar_informe)
         self.win.editMachineRequested.connect(self.on_settings)

@@ -53,6 +53,11 @@ class BottomTablePanel(QFrame):
 
     editar = Signal(int)
     eliminar = Signal(int)
+    # Duplicar(int): el operador quiere clonar una incidencia del mismo
+    # turno (caso tipico: la misma maquina se reincio 4 veces). El
+    # controller arma un form pre-llenado con los datos de la original
+    # para que el operador solo cambie la hora y confirme.
+    duplicar = Signal(int)
     enviarInformeClicked = Signal()
     previsualizarClicked = Signal()
     exportarClicked = Signal()
@@ -351,7 +356,7 @@ class BottomTablePanel(QFrame):
 
         self._tabla.setItem(row, 6, QTableWidgetItem(str(r.get("tecnico") or "")))
 
-        # Acciones (edit / delete)
+        # Acciones (edit / duplicate / delete)
         actions_wrap = QFrame()
         aw = QHBoxLayout(actions_wrap)
         aw.setContentsMargins(0, 0, 0, 0)
@@ -363,6 +368,15 @@ class BottomTablePanel(QFrame):
         btn_edit.setToolTip("Editar")
         btn_edit.clicked.connect(lambda _=False, i=r.get("id"): self.editar.emit(int(i)))
 
+        # Duplicar: clona la fila en un form pre-llenado. El icono es
+        # un 'copy' (dos hojas) para diferenciarlo del lapiz de editar.
+        btn_dup = QToolButton()
+        btn_dup.setProperty("class", "iconBtn")
+        btn_dup.setIcon(svg("clipboard", 14))  # mismo icono que el topbar
+        btn_dup.setCursor(Qt.PointingHandCursor)
+        btn_dup.setToolTip("Duplicar (abre el form pre-llenado para re-registrar)")
+        btn_dup.clicked.connect(lambda _=False, i=r.get("id"): self.duplicar.emit(int(i)))
+
         btn_del = QToolButton()
         btn_del.setProperty("class", "iconBtn")
         btn_del.setProperty("role", "danger")
@@ -372,6 +386,7 @@ class BottomTablePanel(QFrame):
         btn_del.clicked.connect(lambda _=False, i=r.get("id"): self.eliminar.emit(int(i)))
 
         aw.addWidget(btn_edit)
+        aw.addWidget(btn_dup)
         aw.addWidget(btn_del)
         aw.addStretch(1)
         self._tabla.setCellWidget(row, 7, actions_wrap)

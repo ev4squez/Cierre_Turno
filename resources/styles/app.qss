@@ -267,6 +267,13 @@ QPushButton#btnPrimary {
 }
 QPushButton#btnPrimary:hover { background-color: #164788; }
 QPushButton#btnPrimary:disabled { background-color: #94A3B8; }
+/* Estado 'saved' del btnPrimary: feedback visual inmediato despues
+   de un guardado exitoso. El operador ve el check 1.5s antes del
+   QMessageBox del controller. */
+QPushButton#btnPrimary[saved="true"] {
+    background-color: #16A34A;
+    color: #FFFFFF;
+}
 
 QPushButton#btnSecondary {
     background-color: #FFFFFF;

@@ -50,6 +50,7 @@ class MainWindow(QMainWindow):
     limpiarForm = Signal()
     editarIncidencia = Signal(int)
     eliminarIncidencia = Signal(int)
+    duplicarIncidencia = Signal(int)  # nueva: clonar fila pre-llenada
     importRequested = Signal()
     actividadesRequested = Signal()
     dashboardCardClicked = Signal(str)  # color_key: dark/green/blue/amber/red
@@ -139,6 +140,7 @@ class MainWindow(QMainWindow):
         self._form.limpiar.connect(self.limpiarForm.emit)
         self._table.editar.connect(self.editarIncidencia.emit)
         self._table.eliminar.connect(self.eliminarIncidencia.emit)
+        self._table.duplicar.connect(self.duplicarIncidencia.emit)
         # El boton 'Enviar Informe' ahora vive en el header de la tabla.
         self._table.enviarInformeClicked.connect(self.enviarInformeRequested.emit)
         self._table.previsualizarClicked.connect(self.previsualizarInformeRequested.emit)
