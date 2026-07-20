@@ -78,6 +78,7 @@ class _KpiCard(QFrame):
     clicked = Signal(str)  # emite el color_key al hacer click
 
     def __init__(self, *, color_key: str, label_text: str,
+                 tooltip_text: str = "",
                  parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName(f"kpiCard_{color_key}")
@@ -85,6 +86,11 @@ class _KpiCard(QFrame):
         self.setProperty("kpiColor", color_key)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setMinimumHeight(70)
+        # Tooltip explicativo: la card es clickeable, asi que el
+        # operador necesita saber que hace antes de tocar. El texto
+        # esta en DashboardBar.__init__ cuando se crea cada card.
+        if tooltip_text:
+            self.setToolTip(tooltip_text)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 12, 16, 12)
@@ -163,12 +169,34 @@ class DashboardBar(QFrame):
         layout.setSpacing(14)
 
         # Orden: Total / Operativas / Obs / Pendientes / Tareas pendientes
-        self._total = _KpiCard(color_key="dark", label_text="Total maquinas")
-        self._operativas = _KpiCard(color_key="green", label_text="Operativas")
-        self._obs = _KpiCard(color_key="blue", label_text="En observacion")
-        self._pend = _KpiCard(color_key="amber", label_text="Pendientes")
+        # Cada card lleva un tooltip que explica que hace el click,
+        # asi el operador descubre la funcionalidad sin tener que probar.
+        self._total = _KpiCard(
+            color_key="dark", label_text="Total maquinas",
+            tooltip_text="Total de maquinas activas en el casino.\n"
+                         "Click: muestra todas las maquinas en el buscador.",
+        )
+        self._operativas = _KpiCard(
+            color_key="green", label_text="Operativas",
+            tooltip_text="Cantidad de maquinas Operativas ahora mismo.\n"
+                         "Click: filtra el buscador por 'Operativa'.",
+        )
+        self._obs = _KpiCard(
+            color_key="blue", label_text="En observacion",
+            tooltip_text="Cantidad de maquinas marcadas 'En Observacion'.\n"
+                         "Click: filtra el buscador por 'En Observacion'.",
+        )
+        self._pend = _KpiCard(
+            color_key="amber", label_text="Pendientes",
+            tooltip_text="Cantidad de maquinas que requieren accion:\n"
+                         "Fuera de Servicio + Pendiente Repuesto + Espera Tecnico.\n"
+                         "Click: abre la lista de maquinas con problemas.",
+        )
         self._tareas_pend = _KpiCard(
-            color_key="red", label_text="Tareas pendientes"
+            color_key="red", label_text="Tareas pendientes",
+            tooltip_text="Cantidad de actividades diarias marcadas como pendientes.\n"
+                         "Click: abre el modulo de Actividades Diarias con el\n"
+                         "filtro 'Solo pendientes' activado.",
         )
 
         # Re-emitimos los clicks de cada card como una sola signal del

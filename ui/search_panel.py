@@ -77,6 +77,19 @@ class SearchPanel(QFrame):
         # Instala el QCompleter del historial en el QLineEdit
         self._history.install_completer(self._search)
 
+        # Persistencia del filtro de estado entre sesiones. La eleccion
+        # del operador (ej: 'Operativa') se guarda en QSettings y se
+        # restaura al iniciar. Asi no tiene que volver a setear el
+        # filtro cada vez que abre la app.
+        try:
+            from PySide6.QtCore import QSettings
+            cfg = QSettings("CasinoOvalle", "SistemaFDS")
+            filtro_guardado = cfg.value("search/filtro_estado", "Todos")
+            if filtro_guardado and filtro_guardado != "Todos":
+                self._cb_filtro_estado.setCurrentText(filtro_guardado)
+        except Exception:
+            pass  # si QSettings falla, queda "Todos" (default)
+
     # --- UI --------------------------------------------------------------
 
     def _build_ui(self) -> None:
@@ -266,7 +279,18 @@ class SearchPanel(QFrame):
         self.queryChanged.emit(text)
 
     def _on_filtro_cambiado(self, val: str) -> None:
-        """Re-emite el cambio de filtro para que el controller refrezque."""
+        """Re-emite el cambio de filtro para que el controller refrezque.
+
+        Tambien persiste la eleccion en QSettings para restaurarla
+        en el proximo arranque.
+        """
+        # Persistir en settings (best-effort: si falla no pasa nada)
+        try:
+            from PySide6.QtCore import QSettings
+            cfg = QSettings("CasinoOvalle", "SistemaFDS")
+            cfg.setValue("search/filtro_estado", val or "Todos")
+        except Exception:
+            pass
         self.filterChanged.emit(val or "Todos")
 
     def _on_item_clicked(self, item: QListWidgetItem) -> None:
