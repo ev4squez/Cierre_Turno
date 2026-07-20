@@ -775,8 +775,12 @@ class MainController:
         # Chequeo inicial de Outlook: refresca el indicador del topbar.
         self._refrescar_outlook_status()
 
-        # Backup periodico de la DB cada 30 minutos
-        self._backup_timer = QTimer(self)
+        # Backup periodico de la DB cada 30 minutos.
+        # Importante: NO pasamos self como parent porque MainController
+        # no es QObject. El QTimer queda sin parent (Qt lo parented
+        # implicitamente al QApplication, asi que se libera solo al
+        # cerrar la app).
+        self._backup_timer = QTimer()
         self._backup_timer.setInterval(30 * 60 * 1000)  # 30 min
         self._backup_timer.timeout.connect(self._backup_periodico)
         self._backup_timer.start()
