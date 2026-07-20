@@ -154,6 +154,36 @@ QLabel#outlookText {
 }
 QFrame#outlookChip[status="ko"] QLabel#outlookText { color: #B91C1C; }
 
+/* Indicador de Backup en el topbar (chip con dot). Mismo patron
+   que outlookChip, con un estado 'warn' adicional (amarillo) para
+   cuando el ultimo backup tiene entre 30 min y 2h. */
+QFrame#backupChip {
+    background-color: #FFFFFF;
+    border: 1px solid #E1E6ED;
+    border-radius: 17px;
+    padding: 0 4px;
+    min-height: 32px;
+    max-height: 32px;
+}
+QFrame#backupChip[status="ok"]   { border-color: #16A34A; background-color: #F0FDF4; }
+QFrame#backupChip[status="warn"] { border-color: #D97706; background-color: #FEF3C7; }
+QFrame#backupChip[status="ko"]   { border-color: #DC2626; background-color: #FEF2F2; }
+QLabel#backupDot {
+    border-radius: 4px;
+    min-width: 8px; max-width: 8px;
+    min-height: 8px; max-height: 8px;
+}
+QLabel#backupDot[status="ok"]   { background-color: #16A34A; }
+QLabel#backupDot[status="warn"] { background-color: #D97706; }
+QLabel#backupDot[status="ko"]   { background-color: #DC2626; }
+QLabel#backupText {
+    color: #1B2430;
+    font-size: 12px;
+    font-weight: 600;
+}
+QFrame#backupChip[status="warn"] QLabel#backupText { color: #92400E; }
+QFrame#backupChip[status="ko"]   QLabel#backupText { color: #B91C1C; }
+
 
 QLabel#userAvatar {
     background-color: #EAF1FB;

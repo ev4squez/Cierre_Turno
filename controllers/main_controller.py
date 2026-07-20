@@ -1003,6 +1003,11 @@ class MainController:
 
         # Chequeo inicial de Outlook: refresca el indicador del topbar.
         self._refrescar_outlook_status()
+        # Chequeo inicial del chip de Backup: si hay backup reciente
+        # (caso tipico: la app se cerro y volvio a abrir), se muestra
+        # en verde apenas arranca. Si no hay ninguno, se muestra rojo
+        # hasta que el primer backup periodico (30 min despues).
+        self._refrescar_backup_status()
 
         # Backup periodico de la DB cada 30 minutos.
         # Importante: NO pasamos self como parent porque MainController
@@ -1038,6 +1043,36 @@ class MainController:
                     )
                 except Exception:
                     pass
+        except Exception:
+            pass
+        # Refrescar el chip 'Backup' del topbar con la edad del
+        # ultimo backup (independientemente de si este intento fallo
+        # o no: si fallo, se muestra el ultimo bueno o rojo si no
+        # hay ninguno).
+        try:
+            self._refrescar_backup_status()
+        except Exception:
+            pass
+
+    def _refrescar_backup_status(self) -> None:
+        """Lee la edad del ultimo backup y actualiza el chip del topbar.
+
+        Verde si < 30 min, amarillo si < 2h, rojo si > 2h o no hay
+        ninguno. El texto del chip cambia a 'Sin backup' en el caso
+        rojo-sin-backup; en los demas queda 'Backup' (la edad exacta
+        se ve en el tooltip al pasar el mouse).
+        """
+        try:
+            from services import backup as svc_bkp
+            ultimo = svc_bkp.obtener_ultimo_backup()
+        except Exception:
+            ultimo = None
+        if ultimo is None:
+            edad = None
+        else:
+            edad = ultimo.get("edad_segundos")
+        try:
+            self.win._topbar.set_backup_status(edad)
         except Exception:
             pass
 

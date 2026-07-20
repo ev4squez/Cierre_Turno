@@ -64,8 +64,11 @@ def listar_backups(destino_dir: Optional[Path] = None) -> list[dict]:
     """Lista los backups disponibles ordenados por fecha descendente.
 
     Retorna lista de dicts con keys: path, size_mb, timestamp.
+
+    Acepta ``destino_dir`` como ``str`` o ``Path`` (se normaliza
+    internamente) para no romper callers que pasan strings.
     """
-    dst_dir = destino_dir or BACKUPS_DIR
+    dst_dir = Path(destino_dir) if destino_dir is not None else BACKUPS_DIR
     if not dst_dir.exists():
         return []
     backups = sorted(
@@ -88,6 +91,29 @@ def listar_backups(destino_dir: Optional[Path] = None) -> list[dict]:
     return resultado
 
 
+def obtener_ultimo_backup(destino_dir: Optional[Path] = None) -> dict | None:
+    """Devuelve info del backup mas reciente, o None si no hay.
+
+    Pensado para el chip 'Backup' del topbar: el chip se actualiza
+    con la edad del ultimo backup (verde si < 30 min, amarillo
+    si < 2h, rojo si > 2h o no hay ninguno).
+
+    Retorna dict con keys: ``path``, ``name``, ``size_mb``,
+    ``timestamp`` (ISO), ``edad_segundos``.
+    """
+    lista = listar_backups(destino_dir)
+    if not lista:
+        return None
+    ultimo = lista[0]
+    try:
+        ts = datetime.fromisoformat(ultimo["timestamp"])
+        edad = (datetime.now() - ts).total_seconds()
+        ultimo["edad_segundos"] = int(edad)
+    except Exception:
+        ultimo["edad_segundos"] = None
+    return ultimo
+
+
 def restaurar(backup_path: Path,
               destino: Optional[Path] = None) -> bool:
     """Restaura la DB desde un backup. Retorna True si se restauro.
@@ -107,4 +133,4 @@ def restaurar(backup_path: Path,
         return False
 
 
-__all__ = ("hacer_backup", "listar_backups", "restaurar")
+__all__ = ("hacer_backup", "listar_backups", "obtener_ultimo_backup", "restaurar")

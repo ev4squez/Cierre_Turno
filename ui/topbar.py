@@ -163,6 +163,24 @@ class TopBar(QFrame):
         oc_layout.addWidget(self._outlook_dot)
         oc_layout.addWidget(self._outlook_text)
 
+        # Indicador de Backup (chip con dot + texto "Backup").
+        # El controller lo refresca via set_backup_status() despues
+        # de cada backup periodico. Asi el operador ve de un vistazo
+        # si su DB tiene un backup reciente (verde < 30 min, amarillo
+        # < 2h, rojo > 2h o no hay ninguno).
+        self._backup_chip = QFrame()
+        self._backup_chip.setObjectName("backupChip")
+        bc_layout = QHBoxLayout(self._backup_chip)
+        bc_layout.setContentsMargins(8, 0, 10, 0)
+        bc_layout.setSpacing(6)
+        self._backup_dot = QLabel()
+        self._backup_dot.setObjectName("backupDot")
+        self._backup_dot.setFixedSize(8, 8)
+        self._backup_text = QLabel("Backup")
+        self._backup_text.setObjectName("backupText")
+        bc_layout.addWidget(self._backup_dot)
+        bc_layout.addWidget(self._backup_text)
+
         # Botones
         btn_import = QPushButton()
         btn_import.setObjectName("btnIconOnly")
@@ -215,6 +233,8 @@ class TopBar(QFrame):
         layout.addSpacing(4)
         layout.addWidget(self._outlook_chip)
         layout.addSpacing(4)
+        layout.addWidget(self._backup_chip)
+        layout.addSpacing(4)
         layout.addWidget(btn_import)
         layout.addWidget(btn_actividades)
         layout.addWidget(btn_settings)
@@ -262,3 +282,53 @@ class TopBar(QFrame):
                 else "Outlook no detectado - el informe se guardara como archivo"
             )
             self._outlook_dot.setToolTip(self._outlook_chip.toolTip())
+
+    def set_backup_status(self, edad_segundos: int | None,
+                          mensaje: str = "") -> None:
+        """Cambia el indicador 'Backup' del topbar segun la edad del ultimo.
+
+        Parametros
+        ----------
+        edad_segundos:
+            Segundos desde el ultimo backup. None = no hay backup.
+        mensaje:
+            Tooltip opcional (ej: 'Ultimo backup: sistema_fds_20260720.db
+            (hace 12 min)').
+        """
+        if edad_segundos is None:
+            status = "ko"
+            texto = "Sin backup"
+        elif edad_segundos < 30 * 60:
+            status = "ok"      # < 30 min
+            texto = "Backup"
+        elif edad_segundos < 2 * 60 * 60:
+            status = "warn"    # < 2 h
+            texto = "Backup"
+        else:
+            status = "ko"      # > 2 h
+            texto = "Backup"
+
+        self._backup_chip.setProperty("status", status)
+        self._backup_dot.setProperty("status", status)
+        self._backup_chip.style().unpolish(self._backup_chip)
+        self._backup_chip.style().polish(self._backup_chip)
+        self._backup_dot.style().unpolish(self._backup_dot)
+        self._backup_dot.style().polish(self._backup_dot)
+        self._backup_text.setText(texto)
+
+        if mensaje:
+            self._backup_chip.setToolTip(mensaje)
+            self._backup_dot.setToolTip(mensaje)
+        else:
+            if edad_segundos is None:
+                self._backup_chip.setToolTip(
+                    "Aun no se genero ningun backup automatico. "
+                    "Se hace uno cada 30 minutos."
+                )
+            else:
+                mins = edad_segundos // 60
+                self._backup_chip.setToolTip(
+                    f"Ultimo backup hace {mins} min. "
+                    f"Se renueva automaticamente cada 30 min."
+                )
+            self._backup_dot.setToolTip(self._backup_chip.toolTip())
