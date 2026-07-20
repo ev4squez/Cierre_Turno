@@ -10,7 +10,7 @@ Convenciones (mismo patron que ``services.incidencias``):
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Iterable
 
 from sqlalchemy import select
@@ -70,12 +70,29 @@ def registrar(
     if not ticket_jira_sn:
         numero_ticket_jira = ""
 
-    ahora = hora or datetime.now()
-    f = fecha or ahora.date()
+    # Normalizamos fecha/hora: si el caller no las pasa, usamos ahora.
+    # Si pasa solo hora (time) o solo fecha (date), las completamos
+    # con la otra dimension de 'ahora'. Esto acepta los 4 casos:
+    #   ()              -> datetime.now()
+    #   (date=)         -> date + hora actual
+    #   (hora=time)     -> date actual + hora del caller
+    #   (date=, hora=)  -> ambos del caller
+    if hora is None and fecha is None:
+        ahora = datetime.now()
+        f = fecha or ahora.date()
+        h = ahora.time().replace(microsecond=0)
+    else:
+        ahora = hora if hora is not None else datetime.now()
+        # Si hora es un time puro, ahora sera un datetime con fecha de
+        # hoy y esa hora (necesario para el fallback de f abajo).
+        if isinstance(ahora, time):
+            ahora = datetime.combine(date.today(), ahora)
+        f = fecha or ahora.date()
+        h = (hora if isinstance(hora, time) else ahora.time()).replace(microsecond=0)
 
     payload = dict(
         fecha=f,
-        hora=ahora.time().replace(microsecond=0),
+        hora=h,
         tarea=str(tarea).strip(),
         area=str(area).strip(),
         numero_maquina=str(numero_maquina or "").strip(),

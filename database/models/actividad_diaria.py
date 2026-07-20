@@ -103,7 +103,7 @@ class ActividadDiaria(Base):
         return {
             "id": self.id,
             "fecha": self.fecha.isoformat() if self.fecha else None,
-            "hora": self.hora.strftime("%H:%M") if self.hora else None,
+            "hora": self.hora.strftime("%H:%M:%S") if self.hora else None,
             "tarea": self.tarea,
             "area": self.area,
             "numero_maquina": self.numero_maquina,

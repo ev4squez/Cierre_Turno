@@ -278,6 +278,8 @@ class ActividadesDialog(QDialog):
             QHeaderView.ResizeToContents,  # Tecnico
         ]):
             header.setSectionResizeMode(i, mode)
+        # La columna Hora ahora muestra HH:MM:SS, pero ResizeToContents
+        # se ajusta sola al contenido mas largo.
         self._tabla.doubleClicked.connect(self._on_double_click)
         self._tabla.itemSelectionChanged.connect(self._on_selection_changed)
         layout.addWidget(self._tabla, 1)
