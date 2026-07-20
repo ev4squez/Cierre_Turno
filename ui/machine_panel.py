@@ -38,6 +38,7 @@ class MachinePanel(QFrame):
     """
 
     editRequested = Signal(dict)
+    verProblematicasRequested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -77,6 +78,19 @@ class MachinePanel(QFrame):
         self._btn_editar.setEnabled(False)
         self._btn_editar.clicked.connect(self._on_editar_clicked)
         h.addWidget(self._btn_editar)
+
+        # Boton para ver el listado de maquinas problematicas ahora
+        # (dialog modal con todas las que estan en estado problematico,
+        # sin filtro de tiempo)
+        self._btn_problematicas = QPushButton("  Con problemas ahora")
+        self._btn_problematicas.setObjectName("btnWarning")
+        self._btn_problematicas.setIcon(svg("alert", 14))
+        self._btn_problematicas.setCursor(Qt.PointingHandCursor)
+        self._btn_problematicas.setToolTip(
+            "Ver todas las maquinas con problemas en este momento"
+        )
+        self._btn_problematicas.clicked.connect(self.verProblematicasRequested.emit)
+        h.addWidget(self._btn_problematicas)
 
         # Body
         body = QFrame()

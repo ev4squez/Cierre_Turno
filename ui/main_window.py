@@ -43,6 +43,7 @@ class MainWindow(QMainWindow):
     previsualizarInformeRequested = Signal()
     editMachineRequested = Signal(dict)
     exportarIncidenciasRequested = Signal()
+    verProblematicasRequested = Signal()
     searchQueryChanged = Signal(str)
     machineSelected = Signal(dict)
     guardarIncidencia = Signal(dict)
@@ -137,6 +138,10 @@ class MainWindow(QMainWindow):
         self._table.exportarClicked.connect(self.exportarIncidenciasRequested.emit)
         # Boton 'Editar datos' del panel central de la maquina
         self._machine_panel.editRequested.connect(self.editMachineRequested.emit)
+        # Boton 'Con problemas ahora' del panel central
+        self._machine_panel.verProblematicasRequested.connect(
+            self.verProblematicasRequested.emit
+        )
         # Atajos de teclado (Ctrl+E/N/F/L, Esc)
         self._wire_shortcuts()
 

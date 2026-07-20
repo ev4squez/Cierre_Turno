@@ -636,6 +636,45 @@ def listar_atascadas(dias_minimo: int = 7, *, solo_activas: bool = True) -> list
             resultado.append(d)
         return resultado
 
+
+def listar_problematicas(*, solo_activas: bool = True) -> list[dict]:
+    """Maquinas con estado problematico AHORA (sin filtro de dias).
+
+    A diferencia de ``listar_atascadas`` (que solo muestra las que
+    llevan N+ dias), esta devuelve todas las que estan en estado
+    problematico en este momento. Util para la vista "Con problemas
+    ahora" que el operador quiere ver para tomar accion inmediata.
+
+    Estados problematicos: 'Fuera de Servicio', 'Pendiente Repuesto',
+    'Espera Servicio Tecnico', 'En Observacion'.
+
+    Devuelve lista de dicts con todos los campos de la maquina +
+    'dias_en_estado'. Ordenada por updated_at ascendente (las mas
+    recientes primero, o sea las problematicas mas nuevas).
+    """
+    from datetime import datetime
+
+    estados_problematicos = (
+        "Fuera de Servicio",
+        "Pendiente Repuesto",
+        "Espera Servicio Tecnico",
+        "En Observacion",
+    )
+    with get_session() as s:
+        stmt = select(Maquina).where(
+            Maquina.estado.in_(estados_problematicos),
+        )
+        if solo_activas:
+            stmt = stmt.where(Maquina.activo.is_(True))
+        stmt = stmt.order_by(Maquina.updated_at.desc())
+        resultado = []
+        for m in s.scalars(stmt):
+            d = m.to_dict()
+            d["dias_en_estado"] = (datetime.now() - m.updated_at).days
+            resultado.append(d)
+        return resultado
+
+
 __all__: Iterable[str] = (
     "buscar_maquinas",
     "obtener_por_numero",
@@ -646,6 +685,7 @@ __all__: Iterable[str] = (
     "listar_activas",
     "contar_por_estado",
     "listar_atascadas",
+    "listar_problematicas",
     "COLUMNAS_EXCEL",
     "ESTADOS_VALIDOS_EXCEL",
     "_normalizar_estado",

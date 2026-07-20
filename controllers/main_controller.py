@@ -575,6 +575,23 @@ class MainController:
             f"Se exportaron {n} filas a:\n{ruta}",
         )
 
+    def on_ver_problematicas(self) -> None:
+        """Abre un dialog con todas las maquinas problematicas ahora.
+
+        Sin filtro de tiempo (eso es el tab 'Problematicas' de
+        Settings, que muestra las atascadas). El operador puede
+        hacer doble click sobre una fila para verla en el panel
+        central y tomar accion inmediata.
+        """
+        from ui.maquinas_problematicas_dialog import (
+            MaquinasProblematicasDialog,
+        )
+        dlg = MaquinasProblematicasDialog(self.win)
+        # Si elije una, la mostramos en el panel central como si la
+        # hubiera seleccionado del buscador.
+        dlg.maquinaSeleccionada.connect(self.on_machine_selected)
+        dlg.exec()
+
     def on_settings(self, maquina_preseleccionada: dict | None = None) -> None:
         """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas,
         Tecnicos, Tipos de problema).
@@ -800,6 +817,7 @@ class MainController:
         self.win.previsualizarInformeRequested.connect(self.on_previsualizar_informe)
         self.win.editMachineRequested.connect(self.on_settings)
         self.win.exportarIncidenciasRequested.connect(self.on_exportar_incidencias)
+        self.win.verProblematicasRequested.connect(self.on_ver_problematicas)
         self.win.settingsRequested.connect(self.on_settings)
         self.win.logoutRequested.connect(self.on_logout)
         self.win.importRequested.connect(self.on_import)
