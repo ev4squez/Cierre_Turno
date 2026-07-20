@@ -184,7 +184,7 @@ class TopBar(QFrame):
         # Botones
         btn_import = QPushButton()
         btn_import.setObjectName("btnIconOnly")
-        btn_import.setIcon(svg("excel", 17))
+        btn_import.setIcon(svg("download", 17))
         btn_import.setIconSize(btn_import.sizeHint())
         btn_import.setFixedSize(34, 34)
         btn_import.setCursor(Qt.PointingHandCursor)
@@ -192,17 +192,19 @@ class TopBar(QFrame):
         btn_import.clicked.connect(self.importClicked.emit)
 
         # Boton 'Registro de Actividades Diarias'. Reemplaza la
-        # planilla Excel diaria: alta, edicion, filtros, export a
-        # Excel con el formato que pide la SCJ.
+        # planilla Excel diaria: alta, edicion, filtros por fecha /
+        # tecnico / area / tarea, y export a Excel con el formato
+        # que la SCJ espera para auditoria. Icono: calendario con
+        # check (que se completaron tareas) - bien distinto del
+        # clipboard de Duplicar.
         btn_actividades = QPushButton()
         btn_actividades.setObjectName("btnIconOnly")
-        btn_actividades.setIcon(svg("clipboard", 17))
+        btn_actividades.setIcon(svg("calendar-check", 17))
         btn_actividades.setIconSize(btn_actividades.sizeHint())
         btn_actividades.setFixedSize(34, 34)
         btn_actividades.setCursor(Qt.PointingHandCursor)
-        btn_actividades.setToolTip("Registro de Actividades Diarias")
+        btn_actividades.setToolTip("Registro de Actividades Diarias (Ctrl+A)")
         btn_actividades.clicked.connect(self.actividadesClicked.emit)
-
         btn_settings = QPushButton()
         btn_settings.setObjectName("btnIconOnly")
         btn_settings.setIcon(svg("settings", 17))

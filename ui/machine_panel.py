@@ -59,7 +59,7 @@ class MachinePanel(QFrame):
         h.setContentsMargins(18, 12, 18, 12)
         h.setSpacing(8)
         icon = QLabel()
-        icon.setPixmap(svg("info", 18).pixmap(18, 18))
+        icon.setPixmap(svg("search", 18).pixmap(18, 18))
         icon.setProperty("class", "panelIcon")
         title = QLabel("Informacion de la maquina")
         title.setProperty("class", "panelTitle")

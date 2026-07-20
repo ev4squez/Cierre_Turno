@@ -136,7 +136,7 @@ class ActividadesDialog(QDialog):
         hl.setContentsMargins(0, 0, 0, 0)
         hl.setSpacing(8)
         icon = QLabel()
-        icon.setPixmap(svg("clipboard", 20).pixmap(20, 20))
+        icon.setPixmap(svg("calendar-check", 20).pixmap(20, 20))
         hl.addWidget(icon)
         titulo = QLabel("Registro de Actividades Diarias")
         titulo.setStyleSheet(
@@ -170,7 +170,7 @@ class ActividadesDialog(QDialog):
         # Boton exportar
         btn_export = QPushButton("  Exportar a Excel")
         btn_export.setObjectName("btnSecondary")
-        btn_export.setIcon(svg("excel", 14))
+        btn_export.setIcon(svg("download", 14))
         btn_export.setCursor(Qt.PointingHandCursor)
         btn_export.clicked.connect(self._on_exportar)
         hl.addWidget(btn_export)

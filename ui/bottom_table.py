@@ -116,10 +116,10 @@ class BottomTablePanel(QFrame):
         # Boton exportar a CSV (auditorias externas)
         self._btn_exportar = QPushButton("  Exportar")
         self._btn_exportar.setObjectName("btnGhost")
-        self._btn_exportar.setIcon(svg("excel", 15))
+        self._btn_exportar.setIcon(svg("download", 15))
         self._btn_exportar.setCursor(Qt.PointingHandCursor)
         self._btn_exportar.setToolTip(
-            "Exportar las filas visibles a CSV (para auditoria)"
+            "Exportar las filas visibles a Excel (para auditoria)"
         )
         self._btn_exportar.clicked.connect(self.exportarClicked.emit)
         h.addWidget(self._btn_exportar)
@@ -368,11 +368,12 @@ class BottomTablePanel(QFrame):
         btn_edit.setToolTip("Editar")
         btn_edit.clicked.connect(lambda _=False, i=r.get("id"): self.editar.emit(int(i)))
 
-        # Duplicar: clona la fila en un form pre-llenado. El icono es
-        # un 'copy' (dos hojas) para diferenciarlo del lapiz de editar.
+        # Duplicar: clona la fila en un form pre-llenado. Icono
+        # 'copy' (dos hojas superpuestas) para diferenciarlo del lapiz
+        # de editar y del clipboard de Actividades Diarias.
         btn_dup = QToolButton()
         btn_dup.setProperty("class", "iconBtn")
-        btn_dup.setIcon(svg("clipboard", 14))  # mismo icono que el topbar
+        btn_dup.setIcon(svg("copy", 14))
         btn_dup.setCursor(Qt.PointingHandCursor)
         btn_dup.setToolTip("Duplicar (abre el form pre-llenado para re-registrar)")
         btn_dup.clicked.connect(lambda _=False, i=r.get("id"): self.duplicar.emit(int(i)))
