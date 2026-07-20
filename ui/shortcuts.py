@@ -7,8 +7,15 @@ Atajos definidos:
   Ctrl+E   -> enviar informe por Outlook (enviarInformeRequested)
   Ctrl+N   -> nueva incidencia: limpia form + foco en maquina
               (limpiarForm + foco)
+  Ctrl+I   -> alta rapida: limpia form + foco en maquina
+              (idem Ctrl+N, agregado para consistencia con
+              "I" de Incidencia. Algunas personas lo descubren
+              primero que Ctrl+N.)
   Ctrl+F   -> foco en el buscador de maquinas
   Ctrl+L   -> refrescar lista de maquinas (searchQueryChanged con "")
+  Ctrl+A   -> abrir dialog de Registro de Actividades Diarias
+  Ctrl+T   -> abrir dialog de Maquinas con problemas ahora
+              (T = Trouble, alterna al boton del panel central)
   Esc      -> cancelar edicion / cerrar dialogs activos
 
 Cada atajo se monta en ``attach(parent, signals)`` donde parent es
@@ -46,12 +53,21 @@ def attach_shortcuts(parent: QWidget) -> dict[str, QShortcut]:
         # Ctrl+N: nueva incidencia (limpia form + foco)
         "nueva": QShortcut(QKeySequence("Ctrl+N"), parent,
                            context=Qt.WindowShortcut),
+        # Ctrl+I: alias de "nueva" (atajo paralelo, mas descubrible)
+        "alta": QShortcut(QKeySequence("Ctrl+I"), parent,
+                          context=Qt.WindowShortcut),
         # Ctrl+F: foco en el buscador
         "buscar": QShortcut(QKeySequence("Ctrl+F"), parent,
                             context=Qt.WindowShortcut),
         # Ctrl+L: refrescar lista de maquinas
         "refrescar": QShortcut(QKeySequence("Ctrl+L"), parent,
                                context=Qt.WindowShortcut),
+        # Ctrl+A: dialog de Actividades Diarias
+        "actividades": QShortcut(QKeySequence("Ctrl+A"), parent,
+                                 context=Qt.WindowShortcut),
+        # Ctrl+T: dialog de Maquinas con problemas ahora
+        "problematicas": QShortcut(QKeySequence("Ctrl+T"), parent,
+                                   context=Qt.WindowShortcut),
         # Esc: cancelar edicion / cerrar dialogs
         "cancelar": QShortcut(QKeySequence("Escape"), parent,
                               context=Qt.ApplicationShortcut),
@@ -66,8 +82,11 @@ def get_tooltip_suffix(nombre: str) -> str:
     return {
         "enviar": "Ctrl+E",
         "nueva": "Ctrl+N",
+        "alta": "Ctrl+I",
         "buscar": "Ctrl+F",
         "refrescar": "Ctrl+L",
+        "actividades": "Ctrl+A",
+        "problematicas": "Ctrl+T",
     }.get(nombre, "")
 
 

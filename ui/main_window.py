@@ -180,8 +180,17 @@ class MainWindow(QMainWindow):
                 self.limpiarForm.emit(),
                 self._form.focus_maquina(),
             ),
+            # Ctrl+I: alias de Ctrl+N (atajo paralelo para "alta")
+            "alta": lambda: (
+                self.limpiarForm.emit(),
+                self._form.focus_maquina(),
+            ),
             "buscar": self._search_panel.focus_search,
             "refrescar": lambda: self._search_panel._search.clear(),
+            # Ctrl+A: abrir dialog de Actividades Diarias
+            "actividades": self.actividadesRequested.emit,
+            # Ctrl+T: abrir dialog de Maquinas con problemas ahora
+            "problematicas": self.verProblematicasRequested.emit,
             "cancelar": _cancelar,
         })
 
