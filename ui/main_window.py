@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
     eliminarIncidencia = Signal(int)
     importRequested = Signal()
     actividadesRequested = Signal()
+    dashboardCardClicked = Signal(str)  # color_key: dark/green/blue/amber/red
 
     def __init__(self) -> None:
         super().__init__()
@@ -90,8 +91,9 @@ class MainWindow(QMainWindow):
         )
         outer.addWidget(self._topbar)
 
-        # Dashboard bar (4 KPI cards grandes)
+        # Dashboard bar (5 KPI cards grandes)
         self._dashboard = DashboardBar()
+        self._dashboard.cardClicked.connect(self.dashboardCardClicked.emit)
         outer.addWidget(self._dashboard)
 
         # Main area: 2 panels (Machine+Search / Form)
@@ -235,9 +237,11 @@ class MainWindow(QMainWindow):
             self._machine_panel.show_machine(m)
 
     def set_estado_catalogo(self, *, total: int, operativas: int,
-                             en_observacion: int, pendientes: int) -> None:
-        """Actualiza las 4 cards KPI del dashboard top con el estado
-        actual del catalogo de maquinas.
+                             en_observacion: int, pendientes: int,
+                             tareas_pendientes: int = 0) -> None:
+        """Actualiza las 5 cards KPI del dashboard top con el estado
+        actual del catalogo y las tareas pendientes del modulo de
+        Actividades Diarias.
 
         Es la API principal para refrescar el resumen visual. La usan:
           - controllers/main_controller._refrescar_quick_stats
@@ -253,12 +257,13 @@ class MainWindow(QMainWindow):
         (El footer ya no existe; los stats del catalogo viven solo en
         el dashboard.)
         """
-        # Dashboard (4 cards grandes arriba)
+        # Dashboard (5 cards grandes arriba)
         self._dashboard.set_estado_catalogo(
             total=total,
             operativas=operativas,
             en_observacion=en_observacion,
             pendientes=pendientes,
+            tareas_pendientes=tareas_pendientes,
         )
 
     def set_quick_stats(self, *, fds: int, pendientes: int, resueltas: int,

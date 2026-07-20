@@ -16,7 +16,7 @@ viven en el footer.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QByteArray, Qt
+from PySide6.QtCore import QByteArray, Qt, Signal
 from PySide6.QtGui import QIcon, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
@@ -60,11 +60,22 @@ _KPI_ICONS: dict[str, str] = {
         '3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>'
         '<path d="M12 9v4M12 17h.01"/></svg>'
     ),
+    # red - clipboard con check (tareas pendientes de actividades)
+    "red": (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" '
+        'viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/>'
+        '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 '
+        '1-2-2V6a2 2 0 0 1 2-2h2"/>'
+        '<path d="M9 12l2 2 4-4"/></svg>'
+    ),
 }
 
 
 class _KpiCard(QFrame):
     """Una card individual del dashboard."""
+
+    clicked = Signal(str)  # emite el color_key al hacer click
 
     def __init__(self, *, color_key: str, label_text: str,
                  parent: QWidget | None = None) -> None:
@@ -108,17 +119,39 @@ class _KpiCard(QFrame):
         self._value.style().unpolish(self._value)
         self._value.style().polish(self._value)
 
+    def mousePressEvent(self, event) -> None:  # type: ignore[no-untyped-def]
+        # Las cards son clickeables: el DashboardBar escucha esto y
+        # mapea el color_key a la accion correspondiente.
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit(self.property("kpiColor") or "")
+        super().mousePressEvent(event)
+
+    def enterEvent(self, event) -> None:  # type: ignore[no-untyped-def]
+        # Cursor pointer para que se note que es clickeable.
+        self.setCursor(Qt.PointingHandCursor)
+        super().enterEvent(event)
+
 
 class DashboardBar(QFrame):
-    """Barra horizontal con 4 KPI cards grandes.
+    """Barra horizontal con 5 KPI cards grandes.
 
     Distribucion (de izquierda a derecha):
-      TOTAL MAQUINAS | OPERATIVAS | EN OBSERVACION | PENDIENTES
+      TOTAL MAQUINAS | OPERATIVAS | EN OBSERVACION | PENDIENTES (FDS)
+      | TAREAS PENDIENTES (actividades diarias)
 
-    Todas las cards cuentan el ESTADO ACTUAL del parque de maquinas
-    (no las incidencias del turno). Las metricas de productividad del
-    turno viven en el footer.
+    Las 4 primeras cuentan el ESTADO ACTUAL del parque de maquinas.
+    La quinta cuenta las actividades diarias marcadas con
+    pendiente_sn=True (las que el tecnico dejo abiertas). Al hacer
+    click en cualquier card, se emite ``cardClicked(color_key)`` para
+    que el controller mapee la accion correspondiente.
+
+    Signals
+    -------
+    cardClicked(str): color_key de la card clickeada
+        ("dark" / "green" / "blue" / "amber" / "red").
     """
+
+    cardClicked = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -129,20 +162,32 @@ class DashboardBar(QFrame):
         layout.setContentsMargins(16, 14, 16, 4)
         layout.setSpacing(14)
 
-        # Orden: Total / Operativas / Obs / Pendientes
+        # Orden: Total / Operativas / Obs / Pendientes / Tareas pendientes
         self._total = _KpiCard(color_key="dark", label_text="Total maquinas")
         self._operativas = _KpiCard(color_key="green", label_text="Operativas")
         self._obs = _KpiCard(color_key="blue", label_text="En observacion")
         self._pend = _KpiCard(color_key="amber", label_text="Pendientes")
+        self._tareas_pend = _KpiCard(
+            color_key="red", label_text="Tareas pendientes"
+        )
+
+        # Re-emitimos los clicks de cada card como una sola signal del
+        # DashboardBar, con el color_key como payload.
+        for card in (self._total, self._operativas, self._obs,
+                     self._pend, self._tareas_pend):
+            card.clicked.connect(self.cardClicked.emit)
 
         layout.addWidget(self._total, 1)
         layout.addWidget(self._operativas, 1)
         layout.addWidget(self._obs, 1)
         layout.addWidget(self._pend, 1)
+        layout.addWidget(self._tareas_pend, 1)
 
     def set_estado_catalogo(self, *, total: int, operativas: int,
-                            en_observacion: int, pendientes: int) -> None:
-        """Actualiza las 4 cards con el estado actual del parque.
+                            en_observacion: int, pendientes: int,
+                            tareas_pendientes: int = 0) -> None:
+        """Actualiza las 5 cards con el estado actual del parque y
+        las tareas pendientes del modulo de Actividades Diarias.
 
         Parametros
         ----------
@@ -155,11 +200,14 @@ class DashboardBar(QFrame):
         pendientes:
             Suma de FDS + Pendiente Repuesto + Espera Servicio Tecnico.
             Es la cantidad de maquinas que requieren accion.
+        tareas_pendientes:
+            Cantidad de actividades diarias con pendiente_sn=True.
         """
         self._total.set_value(total)
         self._operativas.set_value(operativas)
         self._obs.set_value(en_observacion)
         self._pend.set_value(pendientes)
+        self._tareas_pend.set_value(tareas_pendientes)
 
     # Backward compat: el controller viejo llama ``set_quick_stats`` con
     # fds / pendientes / resueltas / en_observacion. Si alguien todavia

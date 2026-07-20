@@ -95,6 +95,7 @@ class ActividadesDialog(QDialog):
         maquinas: Iterable[dict] = (),
         tecnicos: Iterable[str] = (),
         tareas: Iterable[str] = (),
+        pendiente_solo: bool = False,
     ) -> None:
         super().__init__(parent)
         self._usuario = usuario
@@ -112,14 +113,19 @@ class ActividadesDialog(QDialog):
         self.resize(1400, 780)
         self.setModal(True)
 
-        self._build_ui()
+        self._build_ui(pendiente_solo=pendiente_solo)
+        # Si el caller abrio el dialog con el filtro "solo pendientes"
+        # activado (caso: click en la card 'Tareas pendientes' del
+        # dashboard), lo aplicamos antes del primer _refrescar().
+        if pendiente_solo:
+            self._chk_pendientes.setChecked(True)
         self._refrescar()
 
     # ------------------------------------------------------------------
     # UI
     # ------------------------------------------------------------------
 
-    def _build_ui(self) -> None:
+    def _build_ui(self, *, pendiente_solo: bool = False) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 16, 20, 16)
         layout.setSpacing(12)
@@ -191,9 +197,21 @@ class ActividadesDialog(QDialog):
         self._de_desde = QDateEdit()
         self._de_desde.setCalendarPopup(True)
         self._de_desde.setDisplayFormat("dd/MM/yyyy")
-        # Default: 7 dias atras
+        # Default: hace 30 dias. Si el operador entra con el filtro
+        # 'Solo pendientes' activado (caso tipico: click en la card del
+        # dashboard), extendemos a 90 dias para que se vean tambien
+        # las tareas abiertas mas viejas.
         d = date.today()
         self._de_desde.setDate(QDate(d.year, d.month, d.day))
+        if pendiente_solo:
+            try:
+                hace_90 = d.toordinal() - 90
+                hace_90_d = date.fromordinal(hace_90)
+                self._de_desde.setDate(
+                    QDate(hace_90_d.year, hace_90_d.month, hace_90_d.day)
+                )
+            except Exception:
+                pass
         fl.addWidget(self._de_desde)
 
         f2 = QLabel("Hasta")

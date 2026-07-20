@@ -665,13 +665,18 @@ class MainController:
         dlg.finished_with_result.connect(_on_finished)
         dlg.exec()
 
-    def on_actividades(self) -> None:
+    def on_actividades(self, pendiente_solo: bool = False) -> None:
         """Abrir el dialogo 'Registro de Actividades Diarias'.
 
         Esta pantalla reemplaza la planilla Excel que los tecnicos
         llenan a mano: alta, edicion, filtros por fecha / tecnico /
         area / tarea, y export a Excel con el formato que la SCJ
         espera para auditoria.
+
+        Si ``pendiente_solo`` es True (caso: click en la card
+        'Tareas pendientes' del dashboard), el dialog abre con el
+        filtro 'Solo pendientes' activado y el rango de fechas
+        extendido a 90 dias.
 
         Pasa al dialog la lista actual de maquinas y tecnicos para
         alimentar el combo de 'Maquina' (opcional) y el de 'Tecnico'.
@@ -726,8 +731,24 @@ class MainController:
             maquinas=maquinas,
             tecnicos=tecnicos,
             tareas=tareas,
+            pendiente_solo=pendiente_solo,
         )
         dlg.exec()
+
+    def on_dashboard_card_clicked(self, color_key: str) -> None:
+        """Handler de clicks en las cards del dashboard.
+
+        Por ahora solo la card 'Tareas pendientes' (color_key='red')
+        tiene accion: abre el dialog de Actividades Diarias con el
+        filtro 'Solo pendientes' activado. Las otras 4 cards quedan
+        como visualizacion (la card 'Pendientes' de FDS ya tiene su
+        propio atajo via el boton 'Con problemas ahora' del panel
+        central, asi que no duplicamos).
+        """
+        if color_key == "red":
+            self.on_actividades(pendiente_solo=True)
+        # 'amber' (Pendientes FDS) se maneja por separado: el operador
+        # usa el boton 'Con problemas ahora' del panel central.
 
     def on_logout(self) -> None:
         """Cerrar la app (QApplication.quit)."""
@@ -797,12 +818,20 @@ class MainController:
             + catalogo.get("Espera Servicio Tecnico", 0)
         )
 
+        # Tareas pendientes (modulo de Actividades Diarias)
+        try:
+            from services import actividades_db as svc_act
+            tareas_pend = svc_act.contar_pendientes()
+        except Exception:
+            tareas_pend = 0
+
         # Llamada unica: la MainWindow reparte al dashboard Y al footer.
         self.win.set_estado_catalogo(
             total=total_maquinas,
             operativas=operativas,
             en_observacion=en_observacion,
             pendientes=pendientes,
+            tareas_pendientes=tareas_pend,
         )
 
     def _refrescar_footer(self) -> None:
@@ -894,6 +923,7 @@ class MainController:
         self.win.logoutRequested.connect(self.on_logout)
         self.win.importRequested.connect(self.on_import)
         self.win.actividadesRequested.connect(self.on_actividades)
+        self.win.dashboardCardClicked.connect(self.on_dashboard_card_clicked)
 
         # Chequeo inicial de Outlook: refresca el indicador del topbar.
         self._refrescar_outlook_status()
