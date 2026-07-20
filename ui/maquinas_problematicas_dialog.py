@@ -53,7 +53,12 @@ class MaquinasProblematicasDialog(QDialog):
         super().__init__(parent)
         self.setObjectName("maquinasProblematicasDialog")
         self.setWindowTitle("Maquinas con problemas ahora")
-        self.setMinimumSize(820, 420)
+        # Mas espacio: 1080x560 da aire a la tabla de 6 columnas y deja
+        # respirar los margenes sin tener que maximizar. El operador suele
+        # abrir este dialog sobre la ventana principal (1280x800), asi
+        # que tampoco queremos tapar todo el escritorio.
+        self.setMinimumSize(1080, 560)
+        self.resize(1180, 620)
         self.setModal(True)
 
         self._all: list[dict] = []  # cache para acceder desde callbacks
@@ -108,11 +113,19 @@ class MaquinasProblematicasDialog(QDialog):
         self._tabla.setSelectionMode(QTableWidget.SingleSelection)
         self._tabla.setAlternatingRowColors(True)
         self._tabla.setShowGrid(False)
+        # Filas un poco mas altas: mas legible cuando el operador escanea
+        # la lista de un vistazo desde el otro lado del mostrador.
+        self._tabla.verticalHeader().setDefaultSectionSize(34)
         header = self._tabla.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
+        # Maquina y Dias al contenido (cortas y numericas), el resto
+        # estira para llenar el ancho del dialog y que no queden huecos.
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
         self._tabla.doubleClicked.connect(self._on_double_click)
         layout.addWidget(self._tabla, 1)
 
@@ -171,7 +184,8 @@ class MaquinasProblematicasDialog(QDialog):
             self._tabla.setItem(row, 5, QTableWidgetItem(
                 str(m.get("dias_en_estado", ""))
             ))
-            self._tabla.setRowHeight(row, 30)
+            # Altura efectiva la maneja verticalHeader().setDefaultSectionSize
+            # de arriba, no hace falta setRowHeight fila por fila.
 
         n = len(self._all)
         if n == 0:

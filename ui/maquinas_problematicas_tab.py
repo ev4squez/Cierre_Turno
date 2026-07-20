@@ -101,10 +101,17 @@ class MaquinasProblematicasTab(QFrame):
         self._tabla.setSelectionBehavior(QTableWidget.SelectRows)
         self._tabla.setAlternatingRowColors(True)
         self._tabla.setShowGrid(False)
+        # Mismo espaciado que el dialog: filas mas altas + columnas
+        # de Marca/Modelo/Sector estiradas para llenar el ancho.
+        self._tabla.verticalHeader().setDefaultSectionSize(34)
         header = self._tabla.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Interactive)
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
         root.addWidget(self._tabla, 1)
 
         # Footer con count
@@ -145,7 +152,7 @@ class MaquinasProblematicasTab(QFrame):
             self._tabla.setItem(row, 5, QTableWidgetItem(
                 str(m.get("dias_en_estado", ""))
             ))
-            self._tabla.setRowHeight(row, 30)
+            # Altura la maneja verticalHeader().setDefaultSectionSize.
 
         n = len(lista)
         self._lbl_count.setText(
