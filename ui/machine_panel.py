@@ -224,11 +224,13 @@ class MachinePanel(QFrame):
             v = m.get(key)
             lbl.setText(str(v) if v not in (None, "") else "-")
         if self._history_layout.count() == 0:
-            self._set_history([
-                {"fecha": "10/07/2026", "texto": "Falla en lector de billetes", "resuelta": True},
-                {"fecha": "28/06/2026", "texto": "Pantalla intermitente", "resuelta": True},
-                {"fecha": "02/06/2026", "texto": "Atasco de impresora de tickets", "resuelta": False},
-            ])
+            # Mostrar mensaje vacio (el historial real lo carga el
+            # controller via set_history() despues de consultar la DB).
+            self._set_history([{
+                "fecha": "",
+                "texto": "Sin incidencias previas registradas.",
+                "resuelta": True,
+            }])
 
     def _set_status(self, text: str, severity: str) -> None:
         self._status_text.setText(text)
