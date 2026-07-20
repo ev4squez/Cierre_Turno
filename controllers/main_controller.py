@@ -145,7 +145,12 @@ class MainController:
         # Solo necesitamos refrescar datetime del form (lo hace set_form_machine).
 
     def on_guardar_incidencia(self, data: dict) -> None:
-        """Registrar nueva incidencia y refrescar la UI."""
+        """Registrar nueva incidencia o actualizar si estamos en modo edicion.
+
+        La distincion se hace via ``self.win._form._editando_id``:
+          - None: INSERT (caso normal, alta de FDS nueva)
+          - int:  UPDATE de la FDS existente (caso 'Editar' desde la tabla)
+        """
         if self._selected_maquina is None:
             QMessageBox.warning(
                 self.win,
@@ -153,20 +158,41 @@ class MainController:
                 "Selecciona una maquina antes de registrar una incidencia.",
             )
             return
+
+        # Modo edicion?
+        editando_id = getattr(self.win._form, "_editando_id", None)
+
         try:
             cfg = svc_cfg.obtener()
             usuario = self._obtener_usuario_actual()
-            inc = svc_inc.registrar(
-                numero_maquina=self._selected_maquina["numero_maquina"],
-                problema=data["problema"],
-                motivo_fuera_servicio=data["motivo_fuera_servicio"],
-                accion_realizada=data["accion_realizada"],
-                estado_final=data["estado_final"],
-                observaciones=data["observaciones"],
-                tecnico=data["tecnico"],
-                turno=self._turno_actual,
-                usuario=usuario,
-            )
+            if editando_id is not None:
+                # UPDATE: la FDS ya existe, la editamos in-place
+                inc = svc_inc.editar(
+                    editando_id,
+                    {
+                        "problema": data["problema"],
+                        "motivo_fuera_servicio": data["motivo_fuera_servicio"],
+                        "accion_realizada": data["accion_realizada"],
+                        "estado_final": data["estado_final"],
+                        "observaciones": data["observaciones"],
+                        "tecnico": data["tecnico"],
+                    },
+                )
+                accion_aud = "editar_incidencia"
+            else:
+                # INSERT: alta normal
+                inc = svc_inc.registrar(
+                    numero_maquina=self._selected_maquina["numero_maquina"],
+                    problema=data["problema"],
+                    motivo_fuera_servicio=data["motivo_fuera_servicio"],
+                    accion_realizada=data["accion_realizada"],
+                    estado_final=data["estado_final"],
+                    observaciones=data["observaciones"],
+                    tecnico=data["tecnico"],
+                    turno=self._turno_actual,
+                    usuario=usuario,
+                )
+                accion_aud = "registrar_incidencia"
         except ValueError as e:
             QMessageBox.warning(self.win, "Datos invalidos", str(e))
             return
@@ -174,22 +200,26 @@ class MainController:
             QMessageBox.critical(self.win, "Error al guardar", str(e))
             return
 
-        # OK: refrescar lista, totales y limpiar form (manteniendo maquina)
+        # OK: refrescar lista, totales y limpiar form
+        # Si estabamos editando, salimos del modo edicion; el form
+        # queda vacio (no se mantiene la maquina, para evitar confusion
+        # de cargar otra FDS sobre la editada).
+        self.win._form._editando_id = None
+        self._selected_maquina = None
+        self.win.set_form_machine(None)
         self.win.reset_form()
-        # Re-seleccionar la maquina para no perder el contexto (rapido flujo)
-        self.win.set_form_machine(self._selected_maquina)
         self.refrescar_lista_turno()
 
-        # Auditoria: trazabilidad de quien registro que y cuando
+        # Auditoria: trazabilidad de quien registro/que edito y cuando
         try:
             from services import auditoria as svc_aud
             svc_aud.registrar(
-                accion="registrar_incidencia",
+                accion=accion_aud,
                 tecnico=data.get("tecnico", "") or "desconocido",
                 objetivo_tipo="incidencia",
                 objetivo_id=str(inc.get("id", "?")),
                 detalle=(
-                    f"maquina={self._selected_maquina['numero_maquina']} "
+                    f"maquina={self._selected_maquina['numero_maquina'] if self._selected_maquina else '?'} "
                     f"problema={data['problema']} "
                     f"estado_final={data['estado_final']}"
                 ),
@@ -232,8 +262,10 @@ class MainController:
         self.win._form._ta_accion["widget"].setPlainText(inc.get("accion_realizada", ""))
         self.win._form._cb_estado["widget"].setCurrentText(inc.get("estado_final", "Fuera de Servicio"))
         self.win._form._ta_obs.set_text(inc.get("observaciones", ""))
-        # Marcamos modo edicion via property del form (simple: cambiamos titulo)
-        self._editando_id = inc_id
+        # Marcamos modo edicion en el FORM (no en el controller) para
+        # que on_guardar_incidencia sepa que debe hacer UPDATE en
+        # lugar de INSERT.
+        self.win._form._editando_id = inc_id
 
     def on_eliminar_incidencia(self, inc_id: int) -> None:
         """Eliminar con confirmacion."""
