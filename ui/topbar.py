@@ -24,11 +24,16 @@ class TopBar(QFrame):
     -------
     settingsClicked: el usuario toco el boton de configuracion
     logoutClicked:   el usuario toco el boton salir
+    importClicked:   el usuario toco el boton de importar Excel
+    actividadesClicked: el usuario toco el boton de Registro de
+        Actividades Diarias (nuevo, abre la pantalla que reemplaza la
+        planilla Excel).
     """
 
     settingsClicked = Signal()
     logoutClicked = Signal()
     importClicked = Signal()
+    actividadesClicked = Signal()
 
     def __init__(
         self,
@@ -168,6 +173,18 @@ class TopBar(QFrame):
         btn_import.setToolTip("Importar maquinas desde Excel")
         btn_import.clicked.connect(self.importClicked.emit)
 
+        # Boton 'Registro de Actividades Diarias'. Reemplaza la
+        # planilla Excel diaria: alta, edicion, filtros, export a
+        # Excel con el formato que pide la SCJ.
+        btn_actividades = QPushButton()
+        btn_actividades.setObjectName("btnIconOnly")
+        btn_actividades.setIcon(svg("clipboard", 17))
+        btn_actividades.setIconSize(btn_actividades.sizeHint())
+        btn_actividades.setFixedSize(34, 34)
+        btn_actividades.setCursor(Qt.PointingHandCursor)
+        btn_actividades.setToolTip("Registro de Actividades Diarias")
+        btn_actividades.clicked.connect(self.actividadesClicked.emit)
+
         btn_settings = QPushButton()
         btn_settings.setObjectName("btnIconOnly")
         btn_settings.setIcon(svg("settings", 17))
@@ -199,6 +216,7 @@ class TopBar(QFrame):
         layout.addWidget(self._outlook_chip)
         layout.addSpacing(4)
         layout.addWidget(btn_import)
+        layout.addWidget(btn_actividades)
         layout.addWidget(btn_settings)
         layout.addWidget(btn_logout)
 

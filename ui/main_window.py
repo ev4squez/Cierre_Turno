@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
     editarIncidencia = Signal(int)
     eliminarIncidencia = Signal(int)
     importRequested = Signal()
+    actividadesRequested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -129,6 +130,7 @@ class MainWindow(QMainWindow):
         self._topbar.settingsClicked.connect(self.settingsRequested.emit)
         self._topbar.logoutClicked.connect(self._confirm_logout)
         self._topbar.importClicked.connect(self.importRequested.emit)
+        self._topbar.actividadesClicked.connect(self.actividadesRequested.emit)
         self._search_panel.queryChanged.connect(self.searchQueryChanged.emit)
         self._search_panel.machineSelected.connect(self._on_machine_selected)
         self._form.guardar.connect(self.guardarIncidencia.emit)

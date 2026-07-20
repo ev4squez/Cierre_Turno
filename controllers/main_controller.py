@@ -69,6 +69,14 @@ class MainController:
         except Exception as e:
             print(f"[WARN] migrar tipos de problema desde config: {e}")
 
+        # 1c. Migrar tipos de actividad desde config.TIPOS_ACTIVIDAD a
+        #     la DB (la primera vez). Mismo patron que tipos de problema.
+        try:
+            from services import tipos_actividad_db
+            tipos_actividad_db.migrar_desde_config()
+        except Exception as e:
+            print(f"[WARN] migrar tipos de actividad desde config: {e}")
+
         # 2. Cargar tecnicos y usuario actual desde la DB
         try:
             from services import tecnicos_db
@@ -657,6 +665,70 @@ class MainController:
         dlg.finished_with_result.connect(_on_finished)
         dlg.exec()
 
+    def on_actividades(self) -> None:
+        """Abrir el dialogo 'Registro de Actividades Diarias'.
+
+        Esta pantalla reemplaza la planilla Excel que los tecnicos
+        llenan a mano: alta, edicion, filtros por fecha / tecnico /
+        area / tarea, y export a Excel con el formato que la SCJ
+        espera para auditoria.
+
+        Pasa al dialog la lista actual de maquinas y tecnicos para
+        alimentar el combo de 'Maquina' (opcional) y el de 'Tecnico'.
+        El dialog lee/escribe directamente en la DB via los services.
+        """
+        from ui.actividades_dialog import ActividadesDialog
+        from services import maquinas as svc_maq
+        from services import tecnicos_db
+        from services import tipos_actividad_db
+
+        # Maquinas: usamos el mismo listado que el buscador
+        try:
+            maquinas = svc_maq.buscar_maquinas_priorizando_problematicas(
+                "", limit=500
+            )
+        except Exception:
+            maquinas = []
+
+        # Tecnicos: lista de la DB (no el cache del form, asi cubre
+        # cambios hechos desde Settings)
+        try:
+            tecnicos = [t["nombre"] for t in tecnicos_db.listar(incluir_inactivos=False)]
+        except Exception:
+            tecnicos = []
+
+        # Tipos de actividad: tareas que el tecnico puede elegir
+        try:
+            tareas = tipos_actividad_db.listar_nombres(solo_activos=True)
+        except Exception:
+            tareas = []
+
+        # Turno actual: lo que el topbar ya tiene
+        turno_actual = ""
+        try:
+            turno_actual = self.win._topbar._lbl_turno.text() or ""
+            # Sacamos el prefijo "Turno " que el topbar le mete
+            if turno_actual.lower().startswith("turno "):
+                turno_actual = turno_actual[6:].split(" - ")[0].strip()
+        except Exception:
+            pass
+
+        usuario_actual = ""
+        try:
+            usuario_actual = self.win._topbar._user_name.text() or ""
+        except Exception:
+            pass
+
+        dlg = ActividadesDialog(
+            parent=self.win,
+            usuario=usuario_actual,
+            turno_actual=turno_actual,
+            maquinas=maquinas,
+            tecnicos=tecnicos,
+            tareas=tareas,
+        )
+        dlg.exec()
+
     def on_logout(self) -> None:
         """Cerrar la app (QApplication.quit)."""
         from PySide6.QtWidgets import QApplication
@@ -821,6 +893,7 @@ class MainController:
         self.win.settingsRequested.connect(self.on_settings)
         self.win.logoutRequested.connect(self.on_logout)
         self.win.importRequested.connect(self.on_import)
+        self.win.actividadesRequested.connect(self.on_actividades)
 
         # Chequeo inicial de Outlook: refresca el indicador del topbar.
         self._refrescar_outlook_status()
