@@ -32,7 +32,10 @@ from config import ESTADOS_MAQUINA
 from ui.helpers import severity_for_estado, svg
 
 
-COLS = ["Hora", "Maquina", "Sector", "Marca", "Problema", "Estado", "Tecnico", "Acciones"]
+# Orden de columnas pensado para que el "Fuera de Servicio" sea
+# lo PRIMERO que vea el operador al mirar la tabla: arranca con
+# Estado, luego Hora, Maquina, Problema, Marca, Sector, Tecnico, Acciones.
+COLS = ["Estado", "Hora", "Maquina", "Problema", "Marca", "Sector", "Tecnico", "Acciones"]
 
 # Estados por los que se puede filtrar. Incluye un placeholder 'Todos'.
 ESTADOS_FILTRO: tuple[str, ...] = ("Todos",) + ESTADOS_MAQUINA
