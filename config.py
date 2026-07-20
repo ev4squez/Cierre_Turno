@@ -68,6 +68,38 @@ TIPOS_PROBLEMA: tuple[str, ...] = (
     "Otro",
 )
 
+# Catalogo inicial de TAREAS del modulo 'Registro de Actividades Diarias'.
+# Es la lista que el tecnico elige en el combo 'Tarea' cuando carga una
+# actividad. Configurable desde Settings > Tipos de actividad (mismo
+# patron que TIPOS_PROBLEMA: la primera vez se migra a la DB y despues
+# el operador los maneja desde la UI).
+TIPOS_ACTIVIDAD: tuple[str, ...] = (
+    "Asistencia Slot",
+    "Asistencia Mesa",
+    "Reposicion de papel",
+    "Cambio de stacker",
+    "Reinicio MDC",
+    "Retiro de ticket atascado",
+    "Pago manual",
+    "Manejo de audio de sala",
+    "Manejo de ventiladores",
+    "Cambio de denominacion",
+    "Mantenimiento preventivo",
+    "Otro",
+)
+
+# Areas del casino a las que se asocia una actividad. Combo cerrado
+# (no se edita desde UI): si el casino suma un area nueva, se agrega
+# aca en el siguiente release.
+AREAS: tuple[str, ...] = (
+    "Slots",
+    "Mesas",
+    "Caja",
+    "Administracion",
+    "Salon",
+    "Otro",
+)
+
 
 # ---------------------------------------------------------------------------
 # Defaults de configuracion
