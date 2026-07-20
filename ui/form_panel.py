@@ -60,7 +60,7 @@ class IncidenciaForm(QFrame):
         self._cb_estado["widget"].currentTextChanged.connect(self._schedule_autosave)
         self._ta_motivo["widget"].textChanged.connect(self._schedule_autosave)
         self._ta_accion["widget"].textChanged.connect(self._schedule_autosave)
-        self._ta_obs["widget"].textChanged.connect(self._schedule_autosave)
+        self._ta_obs.changed.connect(self._schedule_autosave)
 
     def _schedule_autosave(self, *_args) -> None:
         """Reinicia el timer (debounce)."""
@@ -88,7 +88,7 @@ class IncidenciaForm(QFrame):
                     "motivo_fuera_servicio": self._ta_motivo["widget"].toPlainText(),
                     "accion_realizada": self._ta_accion["widget"].toPlainText(),
                     "estado_final": self._cb_estado["widget"].currentText(),
-                    "observaciones": self._ta_obs["widget"].toPlainText(),
+                    "observaciones": self._ta_obs.get_text(),
                 },
             )
         except Exception:
@@ -120,7 +120,7 @@ class IncidenciaForm(QFrame):
             b.get("motivo_fuera_servicio", "")
         )
         self._ta_accion["widget"].setPlainText(b.get("accion_realizada", ""))
-        self._ta_obs["widget"].setPlainText(b.get("observaciones", ""))
+        self._ta_obs.set_text(b.get("observaciones", ""))
         return True
 
     # --- UI --------------------------------------------------------------
@@ -196,9 +196,18 @@ class IncidenciaForm(QFrame):
         )
         bl.addWidget(self._cb_estado["host"])
 
-        # Observaciones
-        self._ta_obs = self._field_textarea("Observaciones", "Opcional")
-        bl.addWidget(self._ta_obs["host"])
+        # Observaciones: nuevo widget con plantillas + texto libre
+        from ui.obs_widget import ObservacionWidget
+        obs_host = QFrame()
+        obs_layout = QVBoxLayout(obs_host)
+        obs_layout.setContentsMargins(0, 0, 0, 0)
+        obs_layout.setSpacing(6)
+        obs_label = QLabel("Observaciones")
+        obs_label.setProperty("class", "formLabel")
+        obs_layout.addWidget(obs_label)
+        self._ta_obs = ObservacionWidget()
+        obs_layout.addWidget(self._ta_obs)
+        bl.addWidget(obs_host)
 
         # Botones
         actions = QFrame()
@@ -334,7 +343,7 @@ class IncidenciaForm(QFrame):
         maquina = self._in_maquina["widget"].text().strip()
         motivo = self._ta_motivo["widget"].toPlainText().strip()
         accion = self._ta_accion["widget"].toPlainText().strip()
-        obs = self._ta_obs["widget"].toPlainText().strip()
+        obs = self._ta_obs.get_text().strip()
         return bool(maquina and (motivo or accion or obs))
 
     def focus_maquina(self) -> None:
@@ -349,7 +358,7 @@ class IncidenciaForm(QFrame):
     def set_disabled(self, disabled: bool) -> None:
         for cb in (self._cb_tecnico["widget"], self._cb_tipo["widget"], self._cb_estado["widget"]):
             cb.setEnabled(not disabled)
-        for ta in (self._ta_motivo["widget"], self._ta_accion["widget"], self._ta_obs["widget"]):
+        for ta in (self._ta_motivo["widget"], self._ta_accion["widget"]):
             ta.setReadOnly(disabled)
         self._btn_guardar.setEnabled(not disabled)
         self._btn_limpiar.setEnabled(True)
@@ -375,7 +384,7 @@ class IncidenciaForm(QFrame):
         self._cb_estado["widget"].setCurrentIndex(0)
         self._ta_motivo["widget"].clear()
         self._ta_accion["widget"].clear()
-        self._ta_obs["widget"].clear()
+        self._ta_obs.set_text("")
         self.refresh_datetime()
         # Borrar borrador persistido si hay maquina + tecnico
         if borrar_borrador and maquina and tecnico and tecnico != "Seleccionar tecnico...":
@@ -419,9 +428,12 @@ class IncidenciaForm(QFrame):
             "motivo_fuera_servicio": motivo,
             "accion_realizada": self._ta_accion["widget"].toPlainText().strip(),
             "estado_final": estado,
-            "observaciones": self._ta_obs["widget"].toPlainText().strip(),
+            "observaciones": self._ta_obs.get_text().strip(),
             "tecnico": tecnico,
         }
+        # Feedback auditivo nativo del sistema (sin archivos externos)
+        from PySide6.QtWidgets import QApplication
+        QApplication.beep()
         self.guardar.emit(data)
 
     def _mark_error(self, widget, on: bool) -> None:

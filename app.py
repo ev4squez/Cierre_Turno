@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 from controllers.main_controller import MainController
 from database.db import init_db
 from ui.helpers import load_stylesheet
+from ui.logger import setup_logging
 from ui.main_window import MainWindow
 
 
@@ -21,6 +22,12 @@ def main(argv: list[str] | None = None) -> int:
     app = QApplication(argv)
     app.setApplicationName("SistemaFDS")
     app.setOrganizationName("CasinoOvalle")
+
+    # Logging estructurado antes de cualquier otra cosa, asi capturamos
+    # logs de inicializacion tambien
+    setup_logging()
+    import logging
+    logging.getLogger(__name__).info("Iniciando Sistema FDS")
 
     # Asegurar schema antes de levantar la UI
     init_db()

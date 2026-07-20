@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 
 from ui.correo_tab import CorreoTab
 from ui.empresa_tab import EmpresaTab
+from ui.maquinas_problematicas_tab import MaquinasProblematicasTab
 from ui.maquinas_tab import MaquinasTab
 from ui.tecnicos_tab import TecnicosTab
 from ui.tipos_problema_tab import TiposProblemaTab
@@ -85,6 +86,11 @@ class SettingsDialog(QDialog):
         self._tipos_problema_tab = TiposProblemaTab()
         self._tipos_problema_tab.changed.connect(self._on_any_change)
         self._tabs.addTab(self._tipos_problema_tab, "Tipos de problema")
+
+        # Tab nuevo: maquinas problematicas (atascadas)
+        self._problematicas_tab = MaquinasProblematicasTab()
+        self._problematicas_tab.changed.connect(self._on_any_change)
+        self._tabs.addTab(self._problematicas_tab, "Problematicas")
 
         root.addWidget(self._tabs, 1)
 

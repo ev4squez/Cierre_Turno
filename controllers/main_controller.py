@@ -487,6 +487,61 @@ class MainController:
         )
         dlg.exec()
 
+    def on_exportar_incidencias(self) -> None:
+        """Exporta las filas visibles de la tabla a un CSV."""
+        from pathlib import Path
+        from datetime import date as _date
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        rows = self.win._table.current_rows()
+        if not rows:
+            QMessageBox.information(
+                self.win, "Sin filas",
+                "No hay filas para exportar (la tabla esta vacia).",
+            )
+            return
+
+        # Sugerir nombre por defecto: incidencias_YYYY-MM-DD_turno.csv
+        nombre = (
+            f"incidencias_{_date.today().isoformat()}_"
+            f"{self._turno_actual.lower()}.csv"
+        )
+        ruta, _ = QFileDialog.getSaveFileName(
+            self.win,
+            "Exportar a CSV",
+            str(Path.home() / "Documents" / nombre),
+            "Archivos CSV (*.csv);;Todos los archivos (*)",
+        )
+        if not ruta:
+            return
+
+        try:
+            from services import exportar as svc_exp
+            n = svc_exp.exportar_csv(rows, Path(ruta))
+        except Exception as e:
+            QMessageBox.critical(
+                self.win, "Error al exportar", str(e)
+            )
+            return
+
+        # Auditoria
+        try:
+            from services import auditoria as svc_aud
+            svc_aud.registrar(
+                accion="exportar_incidencias",
+                tecnico=self._obtener_usuario_actual(),
+                objetivo_tipo="informe",
+                objetivo_id=f"{_date.today().isoformat()}-{self._turno_actual}",
+                detalle=f"filas={n} archivo={ruta}",
+            )
+        except Exception:
+            pass
+
+        QMessageBox.information(
+            self.win, "Exportacion completa",
+            f"Se exportaron {n} filas a:\n{ruta}",
+        )
+
     def on_settings(self, maquina_preseleccionada: dict | None = None) -> None:
         """Abrir el dialogo de Configuracion (Empresa, Correo, Maquinas,
         Tecnicos, Tipos de problema).
@@ -711,12 +766,47 @@ class MainController:
         self.win.enviarInformeRequested.connect(self.on_enviar_informe)
         self.win.previsualizarInformeRequested.connect(self.on_previsualizar_informe)
         self.win.editMachineRequested.connect(self.on_settings)
+        self.win.exportarIncidenciasRequested.connect(self.on_exportar_incidencias)
         self.win.settingsRequested.connect(self.on_settings)
         self.win.logoutRequested.connect(self.on_logout)
         self.win.importRequested.connect(self.on_import)
 
         # Chequeo inicial de Outlook: refresca el indicador del topbar.
         self._refrescar_outlook_status()
+
+        # Backup periodico de la DB cada 30 minutos
+        from PySide6.QtCore import QTimer
+        self._backup_timer = QTimer(self)
+        self._backup_timer.setInterval(30 * 60 * 1000)  # 30 min
+        self._backup_timer.timeout.connect(self._backup_periodico)
+        self._backup_timer.start()
+        # Backup inicial al arrancar (asi hay al menos uno)
+        self._backup_periodico()
+
+    def _backup_periodico(self) -> None:
+        """Hace un backup automatico de la DB.
+
+        Best-effort: si falla (ej. la DB esta locked), lo logueamos
+        pero no interrumpimos el flujo del operador.
+        """
+        try:
+            from services import backup as svc_bkp
+            path = svc_bkp.hacer_backup()
+            if path is not None:
+                # Auditoria del backup
+                try:
+                    from services import auditoria as svc_aud
+                    svc_aud.registrar(
+                        accion="backup_automatico",
+                        tecnico="sistema",
+                        objetivo_tipo="database",
+                        objetivo_id=str(path.name),
+                        detalle=f"path={path}",
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
 
 __all__ = ("MainController",)

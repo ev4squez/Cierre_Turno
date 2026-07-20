@@ -52,6 +52,7 @@ class BottomTablePanel(QFrame):
     eliminar = Signal(int)
     enviarInformeClicked = Signal()
     previsualizarClicked = Signal()
+    exportarClicked = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -103,6 +104,17 @@ class BottomTablePanel(QFrame):
         self._btn_preview.setToolTip("Ver el HTML antes de enviarlo")
         self._btn_preview.clicked.connect(self.previsualizarClicked.emit)
         h.addWidget(self._btn_preview)
+
+        # Boton exportar a CSV (auditorias externas)
+        self._btn_exportar = QPushButton("  Exportar")
+        self._btn_exportar.setObjectName("btnGhost")
+        self._btn_exportar.setIcon(svg("excel", 15))
+        self._btn_exportar.setCursor(Qt.PointingHandCursor)
+        self._btn_exportar.setToolTip(
+            "Exportar las filas visibles a CSV (para auditoria)"
+        )
+        self._btn_exportar.clicked.connect(self.exportarClicked.emit)
+        h.addWidget(self._btn_exportar)
 
         # Boton principal: Enviar Informe por Outlook
         self._btn_send = QPushButton("  Enviar Informe por Outlook")
@@ -260,6 +272,7 @@ class BottomTablePanel(QFrame):
 
     def _render_rows(self, rows: list[dict]) -> None:
         """Renderiza la lista de filas en la tabla (no toca el cache)."""
+        self._visible_rows = list(rows)
         self._tabla.setRowCount(0)
         for r in rows:
             self._add_row(r)
@@ -271,6 +284,13 @@ class BottomTablePanel(QFrame):
             )
         else:
             self._count_badge.setText(f"{n} de {total} registros")
+
+    def current_rows(self) -> list[dict]:
+        """Devuelve las filas actualmente visibles (post-filtros).
+
+        Usado por el handler de exportarClicked en el controller.
+        """
+        return list(getattr(self, "_visible_rows", []))
 
     # ------------------------------------------------------------------
     # API
