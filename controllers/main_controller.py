@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Callable
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QMessageBox
 
 from services import (
@@ -775,7 +776,6 @@ class MainController:
         self._refrescar_outlook_status()
 
         # Backup periodico de la DB cada 30 minutos
-        from PySide6.QtCore import QTimer
         self._backup_timer = QTimer(self)
         self._backup_timer.setInterval(30 * 60 * 1000)  # 30 min
         self._backup_timer.timeout.connect(self._backup_periodico)

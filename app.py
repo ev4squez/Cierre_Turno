@@ -10,6 +10,8 @@ import sys
 
 from PySide6.QtWidgets import QApplication
 
+import logging
+
 from controllers.main_controller import MainController
 from database.db import init_db
 from ui.helpers import load_stylesheet
@@ -26,7 +28,6 @@ def main(argv: list[str] | None = None) -> int:
     # Logging estructurado antes de cualquier otra cosa, asi capturamos
     # logs de inicializacion tambien
     setup_logging()
-    import logging
     logging.getLogger(__name__).info("Iniciando Sistema FDS")
 
     # Asegurar schema antes de levantar la UI
