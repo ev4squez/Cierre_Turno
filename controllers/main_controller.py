@@ -231,7 +231,7 @@ class MainController:
         self.win._form._ta_motivo["widget"].setPlainText(inc.get("motivo_fuera_servicio", ""))
         self.win._form._ta_accion["widget"].setPlainText(inc.get("accion_realizada", ""))
         self.win._form._cb_estado["widget"].setCurrentText(inc.get("estado_final", "Fuera de Servicio"))
-        self.win._form._ta_obs["widget"].setPlainText(inc.get("observaciones", ""))
+        self.win._form._ta_obs.set_text(inc.get("observaciones", ""))
         # Marcamos modo edicion via property del form (simple: cambiamos titulo)
         self._editando_id = inc_id
 
