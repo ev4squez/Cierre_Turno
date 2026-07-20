@@ -109,6 +109,7 @@ class BottomTablePanel(QFrame):
         self._btn_send.setObjectName("btnReportSm")
         self._btn_send.setIcon(svg("mail", 15))
         self._btn_send.setCursor(Qt.PointingHandCursor)
+        self._btn_send.setToolTip("Enviar informe por Outlook (Ctrl+E)")
         self._btn_send.clicked.connect(self.enviarInformeClicked.emit)
         h.addWidget(self._btn_send)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
@@ -43,6 +43,85 @@ class IncidenciaForm(QFrame):
 
         self._build_ui()
         self.set_disabled(True)
+        # ID de la incidencia en modo edicion. None = modo alta nueva.
+        self._editando_id: int | None = None
+
+        # Autosave: cuando el operador escribe, guardamos un borrador
+        # en la DB (con debounce de 2 segundos). Asi si la app se
+        # cierra / crashea / el operador se olvida de 'Guardar Registro',
+        # el borrador queda y se le ofrece restaurar al volver.
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.setSingleShot(True)
+        self._autosave_timer.setInterval(2000)
+        self._autosave_timer.timeout.connect(self._autosave_borrador)
+        # Disparamos autosave cuando cambian los combos o textareas
+        self._cb_tecnico["widget"].currentTextChanged.connect(self._schedule_autosave)
+        self._cb_tipo["widget"].currentTextChanged.connect(self._schedule_autosave)
+        self._cb_estado["widget"].currentTextChanged.connect(self._schedule_autosave)
+        self._ta_motivo["widget"].textChanged.connect(self._schedule_autosave)
+        self._ta_accion["widget"].textChanged.connect(self._schedule_autosave)
+        self._ta_obs["widget"].textChanged.connect(self._schedule_autosave)
+
+    def _schedule_autosave(self, *_args) -> None:
+        """Reinicia el timer (debounce)."""
+        self._autosave_timer.start()
+
+    def _autosave_borrador(self) -> None:
+        """Persiste el form actual como borrador (si hay maquina cargada)."""
+        self._on_borrador_cambia({})
+
+    def _on_borrador_cambia(self, _data: dict) -> None:
+        """Escribe el estado actual del form en la tabla borradores."""
+        if self._editando_id is not None:
+            return  # en modo edicion no guardamos borrador
+        maquina = self._in_maquina["widget"].text().strip()
+        tecnico = self._cb_tecnico["widget"].currentText().strip()
+        if not maquina or not tecnico or tecnico == "Seleccionar tecnico...":
+            return
+        try:
+            from services import borradores as svc_bor
+            svc_bor.guardar(
+                maquina_numero=maquina,
+                tecnico=tecnico,
+                data={
+                    "problema": self._cb_tipo["widget"].currentText(),
+                    "motivo_fuera_servicio": self._ta_motivo["widget"].toPlainText(),
+                    "accion_realizada": self._ta_accion["widget"].toPlainText(),
+                    "estado_final": self._cb_estado["widget"].currentText(),
+                    "observaciones": self._ta_obs["widget"].toPlainText(),
+                },
+            )
+        except Exception:
+            pass  # best-effort
+
+    def _cargar_borrador(self, maquina: str, tecnico: str) -> bool:
+        """Si hay un borrador guardado para esta maquina + tecnico,
+        lo restaura en el form. Retorna True si restauro algo.
+        """
+        try:
+            from services import borradores as svc_bor
+            b = svc_bor.obtener(maquina, tecnico)
+        except Exception:
+            return False
+        if not b:
+            return False
+        # Solo restauramos si los campos no estan vacios
+        if not (b.get("motivo_fuera_servicio") or b.get("accion_realizada")
+                or b.get("observaciones")):
+            return False
+        # Restaurar combos primero
+        idx = self._cb_tipo["widget"].findText(b.get("problema", ""))
+        if idx >= 0:
+            self._cb_tipo["widget"].setCurrentIndex(idx)
+        idx = self._cb_estado["widget"].findText(b.get("estado_final", ""))
+        if idx >= 0:
+            self._cb_estado["widget"].setCurrentIndex(idx)
+        self._ta_motivo["widget"].setPlainText(
+            b.get("motivo_fuera_servicio", "")
+        )
+        self._ta_accion["widget"].setPlainText(b.get("accion_realizada", ""))
+        self._ta_obs["widget"].setPlainText(b.get("observaciones", ""))
+        return True
 
     # --- UI --------------------------------------------------------------
 
@@ -240,6 +319,31 @@ class IncidenciaForm(QFrame):
         if idx >= 0:
             self._cb_estado["widget"].setCurrentIndex(idx)
 
+        # Si hay un borrador guardado para esta maquina + tecnico
+        # actual, lo restauramos silenciosamente.
+        tecnico = self._cb_tecnico["widget"].currentText().strip()
+        if (tecnico and tecnico != "Seleccionar tecnico..."
+                and not self._editando_id):
+            self._cargar_borrador(str(m.get("numero_maquina", "")), tecnico)
+
+    def has_data(self) -> bool:
+        """True si el operador ya empezo a cargar algo (para Esc)."""
+        # Maquina cargada Y alguno de los campos de texto tiene contenido
+        maquina = self._in_maquina["widget"].text().strip()
+        motivo = self._ta_motivo["widget"].toPlainText().strip()
+        accion = self._ta_accion["widget"].toPlainText().strip()
+        obs = self._ta_obs["widget"].toPlainText().strip()
+        return bool(maquina and (motivo or accion or obs))
+
+    def focus_maquina(self) -> None:
+        """Pone el foco en el primer campo del form (util para Ctrl+N)."""
+        # El campo maquina es disabled hasta que se selecciona una del buscador.
+        # Asi que el foco va al buscador (que ya existe via _search_panel).
+        try:
+            self._search_panel.focus_search()
+        except Exception:
+            pass
+
     def set_disabled(self, disabled: bool) -> None:
         for cb in (self._cb_tecnico["widget"], self._cb_tipo["widget"], self._cb_estado["widget"]):
             cb.setEnabled(not disabled)
@@ -253,7 +357,17 @@ class IncidenciaForm(QFrame):
         self._in_fecha["widget"].setText(now.strftime("%d/%m/%Y"))
         self._in_hora["widget"].setText(now.strftime("%H:%M"))
 
-    def reset_fields(self) -> None:
+    def reset_fields(self, *, borrar_borrador: bool = True) -> None:
+        """Limpia el form a su estado inicial.
+
+        Si ``borrar_borrador`` es True (default), elimina el borrador
+        asociado a la maquina actual. Eso pasa cuando se limpia el form
+        despues de un 'Guardar Registro' exitoso o cuando el operador
+        aprieta 'Limpiar'. Si el caller quiere NO borrar el borrador
+        (ej: cambios temporales), pasa False.
+        """
+        maquina = self._in_maquina["widget"].text().strip()
+        tecnico = self._cb_tecnico["widget"].currentText().strip()
         self._cb_tecnico["widget"].setCurrentIndex(0)
         self._cb_tipo["widget"].setCurrentIndex(0)
         self._cb_estado["widget"].setCurrentIndex(0)
@@ -261,6 +375,15 @@ class IncidenciaForm(QFrame):
         self._ta_accion["widget"].clear()
         self._ta_obs["widget"].clear()
         self.refresh_datetime()
+        # Borrar borrador persistido si hay maquina + tecnico
+        if borrar_borrador and maquina and tecnico and tecnico != "Seleccionar tecnico...":
+            try:
+                from services import borradores as svc_bor
+                svc_bor.eliminar(maquina, tecnico)
+            except Exception:
+                pass
+        # Salir del modo edicion
+        self._editando_id = None
 
     # --- handlers ---------------------------------------------------------
 

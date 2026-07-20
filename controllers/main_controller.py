@@ -178,9 +178,23 @@ class MainController:
         # Re-seleccionar la maquina para no perder el contexto (rapido flujo)
         self.win.set_form_machine(self._selected_maquina)
         self.refrescar_lista_turno()
-        self._refrescar_quick_stats()
-        self._refrescar_footer()
-        self._toast(f"Incidencia #{inc['id']} registrada.")
+
+        # Auditoria: trazabilidad de quien registro que y cuando
+        try:
+            from services import auditoria as svc_aud
+            svc_aud.registrar(
+                accion="registrar_incidencia",
+                tecnico=data.get("tecnico", "") or "desconocido",
+                objetivo_tipo="incidencia",
+                objetivo_id=str(inc.get("id", "?")),
+                detalle=(
+                    f"maquina={self._selected_maquina['numero_maquina']} "
+                    f"problema={data['problema']} "
+                    f"estado_final={data['estado_final']}"
+                ),
+            )
+        except Exception:
+            pass  # best-effort
 
     def on_limpiar_form(self) -> None:
         """El operador toco Limpiar."""
@@ -230,9 +244,20 @@ class MainController:
             return
         svc_inc.eliminar(inc_id)
         self.refrescar_lista_turno()
-        self._refrescar_quick_stats()
-        self._refrescar_footer()
-        self._toast(f"Incidencia #{inc_id} eliminada.")
+
+        # Auditoria: quien elimino que
+        try:
+            from services import auditoria as svc_aud
+            tecnico = self._obtener_usuario_actual()
+            svc_aud.registrar(
+                accion="eliminar_incidencia",
+                tecnico=tecnico,
+                objetivo_tipo="incidencia",
+                objetivo_id=str(inc_id),
+                detalle="",
+            )
+        except Exception:
+            pass
 
     def on_enviar_informe(self) -> None:
         """Genera HTML + Outlook (o fallback a archivo).
@@ -345,6 +370,22 @@ class MainController:
             ids = [r["id"] for r in resumen.registros]
             svc_inc.marcar_correo_enviado(ids)
             self.refrescar_lista_turno()
+            # Auditoria: envio exitoso
+            try:
+                from services import auditoria as svc_aud
+                svc_aud.registrar(
+                    accion="enviar_informe",
+                    tecnico=nombre_firmante,
+                    objetivo_tipo="informe",
+                    objetivo_id=f"{date.today().isoformat()}-{self._turno_actual}",
+                    detalle=(
+                        f"incidencias={len(ids)} "
+                        f"destinatarios={len(destinatarios)} "
+                        f"modo={modo}"
+                    ),
+                )
+            except Exception:
+                pass
             QMessageBox.information(
                 self.win,
                 "Informe enviado",
@@ -353,6 +394,18 @@ class MainController:
         else:
             # Fallback: HTML persistido
             archivo = resultado.get("archivo", "")
+            # Auditoria: fallback a archivo
+            try:
+                from services import auditoria as svc_aud
+                svc_aud.registrar(
+                    accion="enviar_informe_fallback",
+                    tecnico=nombre_firmante,
+                    objetivo_tipo="informe",
+                    objetivo_id=f"{date.today().isoformat()}-{self._turno_actual}",
+                    detalle=f"archivo={archivo}",
+                )
+            except Exception:
+                pass
             QMessageBox.warning(
                 self.win,
                 "Outlook no disponible",

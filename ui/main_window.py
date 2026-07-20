@@ -132,6 +132,41 @@ class MainWindow(QMainWindow):
         # El boton 'Enviar Informe' ahora vive en el header de la tabla.
         self._table.enviarInformeClicked.connect(self.enviarInformeRequested.emit)
         self._table.previsualizarClicked.connect(self.previsualizarInformeRequested.emit)
+        # Atajos de teclado (Ctrl+E/N/F/L, Esc)
+        self._wire_shortcuts()
+
+    def _wire_shortcuts(self) -> None:
+        """Atajos de teclado globales de la ventana principal.
+
+        Ctrl+E   -> enviar informe por Outlook
+        Ctrl+N   -> nueva incidencia: limpia form + foco en maquina
+        Ctrl+F   -> foco en el buscador de maquinas
+        Ctrl+L   -> refrescar lista de maquinas (limpia el filtro)
+        Esc      -> cancelar edicion (limpia form si hay algo cargado)
+        """
+        from ui.shortcuts import (
+            attach_shortcuts, attach_to_signals,
+        )
+
+        # Atajos: el handler de Esc requiere chequear si hay algo cargado.
+        def _cancelar():
+            # Si el form tiene datos cargados, los limpia.
+            # Si esta vacio, no hace nada (util para cerrar dialogs en
+            # otras ventanas que capturen Esc).
+            if self._form.has_data():
+                self._form.reset_fields()
+
+        self._shortcuts = attach_shortcuts(self)
+        attach_to_signals(self._shortcuts, {
+            "enviar": self.enviarInformeRequested.emit,
+            "nueva": lambda: (
+                self.limpiarForm.emit(),
+                self._form.focus_maquina(),
+            ),
+            "buscar": self._search_panel.focus_search,
+            "refrescar": lambda: self._search_panel._search.clear(),
+            "cancelar": _cancelar,
+        })
 
     def _on_machine_selected(self, m: dict) -> None:
         """Slot interno: propaga la seleccion al panel central y al form."""
