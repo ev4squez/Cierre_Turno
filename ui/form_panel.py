@@ -37,9 +37,13 @@ class IncidenciaForm(QFrame):
         super().__init__(parent)
         self.setProperty("class", "panel")
         self.setObjectName("panelForm")
-        self.setMinimumWidth(440)
-        self.setMaximumWidth(560)
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        # El operador quiere que el form de 'Registrar Fuera de Servicio'
+        # ocupe ~60% del ancho. Antes era 440-560px en una ventana de 1400
+        # (proporcion ~40/60 invertida). Subimos el minimo y sacamos el
+        # maximo: el layout del main_window controla la proporcion real
+        # con stretch factors.
+        self.setMinimumWidth(640)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self._build_ui()
         self.set_disabled(True)

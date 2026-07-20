@@ -106,8 +106,11 @@ class MainWindow(QMainWindow):
         ph = QHBoxLayout(panels)
         ph.setContentsMargins(16, 6, 16, 0)
         ph.setSpacing(16)
-        ph.addWidget(self._machine_panel, 1)
-        ph.addWidget(self._form)
+        # Proporcion 40/60: el form de 'Registrar Fuera de Servicio' es
+        # lo que mas mira / toca el operador (textarea de motivo,
+        # accion, observaciones), asi que le damos el 60% del ancho.
+        ph.addWidget(self._machine_panel, 2)
+        ph.addWidget(self._form, 3)
         outer.addWidget(panels, 1)
 
         # Bottom table
