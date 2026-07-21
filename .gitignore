@@ -70,6 +70,7 @@ Cierre_Turno_V2.xlsm
 # Backups de pruebas del smoke test (HTMLs generados automaticamente)
 backups/smoke_informe_*.html
 backups/Informe_*.html
+backups/Informe.html
 backups/muestra_informe_*.html
 
 # Log generado por smoke tests
@@ -85,3 +86,9 @@ uv.lock
 
 # Metadata de uv build
 sistema_fds.egg-info/
+
+# Build de PyInstaller (output .exe + _internal/)
+SistemaFDS/
+
+# Estado de runtime (no parte del repo)
+data/
