@@ -633,13 +633,24 @@ def render_informe(
 
 
 def _replace_meta(html: str, fecha: date, etiqueta: str, rango: str, usuario: str) -> str:
-    """Reemplaza las 4 columnas de la meta info."""
+    """Reemplaza las 4 columnas de la meta info.
+
+    Columnas: Fecha del informe, Turno, Hora generacion, Enviado por.
+    A partir de 2026-07 el operador pidio que la columna Turno NO
+    incluya el rango horario (sigue en el body si se quiere, pero
+    el header solo dice la etiqueta, ej: 'Manana' en vez de
+    'Manana (06:00-14:00)').
+    """
     patron = re.compile(
         r'(<span style="font-family:\'Segoe UI\',Arial,sans-serif; font-size:14px; font-weight:600; color:#1B2430;">)([^<]+)(</span>)'
     )
     nuevos = [
         fecha.strftime("%d/%m/%Y"),
-        f"{etiqueta} ({rango})",
+        # Solo la etiqueta, sin el rango. Asi el header queda limpio:
+        # "Turno: Manana" en vez de "Turno: Manana (06:00-14:00)".
+        # El rango sigue disponible en 'rango' por si una v2 quiere
+        # mostrarlo en otro lado.
+        etiqueta,
         datetime.now().strftime("%H:%M"),
         usuario,
     ]
