@@ -255,16 +255,26 @@ class TopBar(QFrame):
         self._user_role.setText(rol)
         self._avatar.setText(initials(nombre))
 
-    def set_outlook_status(self, disponible: bool, mensaje: str = "") -> None:
-        """Cambia el indicador de Outlook del topbar.
+    def set_outlook_status(self, disponible: bool, mensaje: str = "",
+                           label: str | None = None) -> None:
+        """Cambia el indicador de envio del topbar.
+
+        El chip tiene 2 representaciones:
+          - Texto chico a la derecha del dot (ej: 'Outlook', 'Gmail',
+            'M365', 'Sin Outlook').
+          - Tooltip con el detalle (host:port, user, mensaje accionable).
 
         Parametros
         ----------
         disponible:
-            True si Outlook esta accesible, False si no.
+            True si el envio esta accesible (Outlook / SMTP), False si no.
         mensaje:
             Texto opcional que aparece como tooltip al pasar el mouse
             (ej: 'Outlook 2019 detectado' o 'win32com no disponible').
+        label:        None -> 'Outlook' (default, para el modo Outlook clasico)
+            str  -> texto custom para el label del chip (ej: 'Gmail',
+                    'M365', 'SMTP'). Asi el chip refleja el proveedor
+                    real cuando no es Outlook.
         """
         self._outlook_chip.setProperty("status",
                                         "ok" if disponible else "ko")
@@ -274,14 +284,24 @@ class TopBar(QFrame):
         self._outlook_chip.style().polish(self._outlook_chip)
         self._outlook_dot.style().unpolish(self._outlook_dot)
         self._outlook_dot.style().polish(self._outlook_dot)
-        self._outlook_text.setText("Outlook" if disponible else "Sin Outlook")
+        # Label del chip:
+        #   - Si nos pasan uno custom (ej: 'Gmail'), usamos ese.
+        #   - Si no, fallback al comportamiento legacy ('Outlook' o
+        #     'Sin Outlook' segun disponibilidad).
+        if label is not None:
+            self._outlook_text.setText(label)
+        else:
+            self._outlook_text.setText(
+                "Outlook" if disponible else "Sin Outlook"
+            )
         if mensaje:
             self._outlook_chip.setToolTip(mensaje)
             self._outlook_dot.setToolTip(mensaje)
         else:
             self._outlook_chip.setToolTip(
-                "Outlook listo para enviar" if disponible
-                else "Outlook no detectado - el informe se guardara como archivo"
+                "Listo para enviar" if disponible
+                else "No se detecta proveedor de envio - el informe "
+                     "se guardara como archivo"
             )
             self._outlook_dot.setToolTip(self._outlook_chip.toolTip())
 

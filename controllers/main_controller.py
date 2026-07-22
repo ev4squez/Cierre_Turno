@@ -1229,22 +1229,24 @@ class MainController:
             return
 
         # Configurado. Marcamos verde con el detalle del servidor.
-        # El tooltip dice el perfil (Gmail/M365/Otro) + host:port + el
-        # From. Asi el operador ve en pantalla cual es la config
-        # sin tener que abrir Settings.
+        # El chip dice el perfil (Gmail/M365/Otro) en el label +
+        # host:port + el From en el tooltip. Asi el operador ve en
+        # pantalla cual es la config sin tener que abrir Settings.
         from services import smtp_profiles
         perfil = smtp_profiles.find_profile(correo.get("smtp_perfil", "gmail"))
-        perfil_label = {
+        LABEL_POR_PERFIL = {
             "gmail": "Gmail",
             "m365_app": "M365",
             "m365_oauth": "M365 OAuth2",
             "otro": "SMTP",
-        }.get(perfil["key"], "SMTP")
+        }
+        perfil_label = LABEL_POR_PERFIL.get(perfil["key"], "SMTP")
         from_addr = user if "@" in user else user
         self.win.set_outlook_status(
-            True,
+            True,    # disponible
             f"{perfil_label} listo: {host}:{correo.get('smtp_port', 587)} "
-            f"como {from_addr}"
+            f"como {from_addr}",
+            label=perfil_label,
         )
 
     # ------------------------------------------------------------------
