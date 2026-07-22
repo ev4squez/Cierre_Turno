@@ -204,11 +204,25 @@ def enviar_informe(
 
     except Exception as e:
         path = _persistir_html(html, asunto)
-        _log("envio_error", {"error": str(e), "asunto": asunto})
+        # Clasificar el error para que el caller muestre el dialog
+        # accionable correcto. Outlook tira variantes del mismo problema
+        # de "perfil / archivo de datos no encontrado" con codigos
+        # COM especificos:
+        #   -2147352567  (0x80004005 E_FAIL generico)
+        #   -2147221219  (0x8004010F que es MAPI_E_NOT_FOUND)
+        # Mas el texto "no se encuentra un archivo de datos" / "data file"
+        # / "no hay perfiles" / "default profile".
+        categoria = _clasificar_error_outlook(e)
+        _log("envio_error", {
+            "error": str(e),
+            "asunto": asunto,
+            "categoria": categoria,
+        })
         return {
             "ok": False,
             "modo": "fallback",
             "outlook": False,
+            "categoria": categoria,
             "mensaje": f"Error al usar Outlook: {e}. HTML guardado en disco.",
             "archivo": str(path),
         }
@@ -282,6 +296,115 @@ def armar_asunto(template: str, *, fecha, turno: str) -> str:
         return template.format(fecha=fecha.strftime("%d/%m/%Y"), turno=turno)
     except (KeyError, IndexError, AttributeError):
         return template
+
+
+# ---------------------------------------------------------------------------
+# Clasificacion de errores + helper para abrir Panel de control
+# ---------------------------------------------------------------------------
+
+
+# Codigos COM mas comunes que vemos cuando Outlook no puede enviar:
+#   -2147352567  -> 0x80004005 (E_FAIL generico, "no se encuentra un
+#                   archivo de datos" suele caer aca)
+#   -2147221219  -> 0x8004010F (MAPI_E_NOT_FOUND)
+#   -2147164126  -> 0x80030305 (error de archivo .ost/.pst)
+# Estos los emite Outlook cuando CreateItem() no tiene perfil/default
+# store. El operador lo ve como "no hay archivo de datos para enviar y
+# recibir mensajes".
+_OUTLOOK_COM_CODES_FALLA_PERFIL = (
+    -2147352567,  # 0x80004005
+    -2147221219,  # 0x8004010F
+    -2147164126,  # 0x80030305
+)
+
+# Frases que Outlook mete en el mensaje cuando es problema de perfil.
+_OUTLOOK_FRASES_FALLA_PERFIL = (
+    "no se encuentra un archivo de datos",
+    "archivo de datos",
+    "data file",
+    "no hay ningun perfil",
+    "no se puede crear el mensaje",
+    "default profile",
+    "perfil predeterminado",
+    "no profile",
+)
+
+
+def _clasificar_error_outlook(exc: BaseException) -> str:
+    """Categoriza la excepcion que devolvio Outlook.
+
+    Categorias posibles:
+      * ``perfil_no_configurado`` -> no hay perfil / cuenta default.
+        El operador tiene que configurar uno. Le mostramos el camino
+        al Panel de control -> Correo.
+      * ``otro`` -> cualquier otro error (red, permisos, antivirus).
+        Mensaje generico.
+    """
+    # El __cause__ o args suelen traer la tupla COM (code, source, msg, ...)
+    candidatos: list[str] = []
+    code_val: int | None = None
+    s = str(exc) or ""
+    candidatos.append(s)
+    if exc.__cause__ is not None:
+        candidatos.append(str(exc.__cause__))
+    if exc.__context__ is not None:
+        candidatos.append(str(exc.__context__))
+    if hasattr(exc, "args"):
+        for a in (exc.args or ()):
+            if isinstance(a, (int, float)):
+                code_val = int(a)
+            else:
+                candidatos.append(str(a))
+
+    blob = " | ".join(c.lower() for c in candidatos)
+    # Match por codigo COM
+    for code in _OUTLOOK_COM_CODES_FALLA_PERFIL:
+        if code_val == code or str(code) in blob:
+            # Refinamos con texto si esta, si no asumimos perfil por
+            # estar en el set conocido de errores COM de MAPI.
+            if any(frase in blob for frase in _OUTLOOK_FRASES_FALLA_PERFIL):
+                return "perfil_no_configurado"
+            if code in (-2147352567, -2147221219):
+                return "perfil_no_configurado"
+    # Match solo por texto (cubrimos mensajes localizados)
+    for frase in _OUTLOOK_FRASES_FALLA_PERFIL:
+        if frase in blob:
+            return "perfil_no_configurado"
+    return "otro"
+
+
+def abrir_panel_control_correo() -> bool:
+    """Abre el dialogo 'Panel de control -> Correo' (Mail applet) de Windows.
+
+    Sirve para que el operador pueda configurar / seleccionar el perfil
+    de Outlook que el sistema va a usar. Pensado para llamarlo desde el
+    boton del dialog de error.
+
+    Comandos intentados en orden (Win11 a veces cambia el canonico):
+      1. ``control.exe /name Microsoft.Mail``   (canonico moderno)
+      2. ``control.exe mlcfg32.cpl``            (canonico legacy)
+      3. ``control.exe /name Microsoft.Mail32`` (algunas builds)
+
+    Devuelve True si pudo disparar alguno sin error OS.
+    """
+    import subprocess
+    candidatos = [
+        ["control.exe", "/name", "Microsoft.Mail"],
+        ["control.exe", "mlcfg32.cpl"],
+        ["control.exe", "/name", "Microsoft.Mail32"],
+    ]
+    for cmd in candidatos:
+        try:
+            r = subprocess.run(cmd, timeout=4, capture_output=True)
+            # control.exe devuelve 0 si abrio el applet. Aun si no,
+            # el proceso arranco; dejamos que Windows muestre el error
+            # nativo. Solo abortamos si el ejecutable no existe.
+            return True
+        except FileNotFoundError:
+            continue
+        except Exception:
+            continue
+    return False
 
 
 def enviar_informe_turno(
@@ -361,4 +484,5 @@ __all__ = (
     "enviar_informe",
     "enviar_informe_turno",
     "armar_asunto",
+    "abrir_panel_control_correo",
 )

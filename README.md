@@ -82,6 +82,17 @@ Asunto, destinatarios, CC y cuerpo HTML renderizado con resumen general,
 actividades del dia, tabla de incidencias, pendientes para el proximo turno y
 firma. El operador revisa y recien ahi acepta enviar.
 
+### Dialog accionable cuando Outlook no tiene perfil
+
+![Perfil](docs/screenshots/14_dialog_perfil_no_configurado.png)
+
+Si Outlook rechaza el envio con "no se encuentra un archivo de datos"
+(perfil / cuenta default no configurados), el sistema muestra un dialog
+con pasos concretos: boton "Abrir Panel de control -> Correo" que dispara
+`control.exe` (Win10/11) y lleva al operador directo a la pantalla de
+perfiles, mas la ruta del HTML persistido por si quiere enviarlo manual
+mientras tanto.
+
 ---
 
 ## Funcionalidades

@@ -534,7 +534,11 @@ class MainController:
                 resultado.get("mensaje", "Informe enviado."),
             )
         else:
-            # Fallback: HTML persistido
+            # Fallback: HTML persistido. Si el motivo fue que Outlook no
+            # tiene perfil / archivo de datos configurado, mostramos un
+            # dialog accionable con un boton para abrir Panel de control
+            # -> Correo. Si es otro error (red, permisos, antivirus),
+            # caemos al warning generico de siempre.
             archivo = resultado.get("archivo", "")
             # Auditoria: fallback a archivo
             try:
@@ -544,15 +548,82 @@ class MainController:
                     tecnico=nombre_firmante,
                     objetivo_tipo="informe",
                     objetivo_id=f"{date.today().isoformat()}-{self._turno_actual}",
-                    detalle=f"archivo={archivo}",
+                    detalle=f"archivo={archivo} categoria={resultado.get('categoria','otro')}",
                 )
             except Exception:
                 pass
-            QMessageBox.warning(
-                self.win,
-                "Outlook no disponible",
-                f"{resultado.get('mensaje','')}\n\nArchivo guardado en:\n{archivo}",
-            )
+            if resultado.get("categoria") == "perfil_no_configurado":
+                self._mostrar_dialog_perfil_no_configurado(archivo)
+            else:
+                QMessageBox.warning(
+                    self.win,
+                    "Outlook no disponible",
+                    f"{resultado.get('mensaje','')}\n\nArchivo guardado en:\n{archivo}",
+                )
+
+    def _mostrar_dialog_perfil_no_configurado(self, archivo_html: str) -> None:
+        """Muestra un dialog accionable cuando Outlook no tiene perfil.
+
+        El operador ve tres botones:
+          * "Abrir Panel de control -> Correo" -> dispara control.exe
+            (Microsoft.Mail / mlcfg32.cpl) y Windows muestra el dialogo
+            nativo donde puede agregar / seleccionar un perfil.
+          * "Abrir HTML guardado" -> abre el .html persistido con el
+            visor default (navegador). Sirve para que pueda enviarlo
+            manualmente mientras configura el perfil.
+          * "Cerrar" -> descarta.
+        """
+        box = QMessageBox(self.win)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle("Outlook no tiene perfil configurado")
+        box.setText(
+            "Outlook rechazo el envio porque no tiene un perfil / "
+            "archivo de datos configurado."
+        )
+        archivo_txt = archivo_html or "(no se persistio)"
+        box.setInformativeText(
+            "Que hacer:\n"
+            "  1. Apreta 'Abrir Panel de control -> Correo'.\n"
+            "  2. En la ventana que se abre, anda a 'Mostrar perfiles'.\n"
+            "  3. Si no hay ninguno, 'Agregar...' y configura tu cuenta.\n"
+            "  4. Si hay varios, marca uno como 'Establecer como\n"
+            "     predeterminado'.\n"
+            "  5. Volve a esta ventana y reintenta el envio.\n\n"
+            f"Mientras tanto, el HTML quedo guardado en:\n{archivo_txt}"
+        )
+        # Botones (Qt los pone en el orden que los damos)
+        btn_panel = box.addButton(
+            "Abrir Panel de control -> Correo", QMessageBox.ButtonRole.AcceptRole
+        )
+        btn_html = box.addButton(
+            "Abrir HTML guardado", QMessageBox.ButtonRole.ActionRole
+        )
+        btn_close = box.addButton(QMessageBox.StandardButton.Close)
+        # Default (Enter) -> accion principal
+        box.setDefaultButton(btn_panel)
+        box.exec()
+        clicked = box.clickedButton()
+        if clicked is btn_panel:
+            ok = svc_outlook.abrir_panel_control_correo()
+            if not ok:
+                QMessageBox.information(
+                    self.win,
+                    "No se pudo abrir",
+                    "No se encontro 'control.exe' en PATH. "
+                    "Abri manualmente: Panel de control -> Correo "
+                    "(Mail) -> Mostrar perfiles.",
+                )
+        elif clicked is btn_html and archivo_html:
+            try:
+                import os
+                os.startfile(archivo_html)  # type: ignore[attr-defined]
+            except Exception as e:
+                QMessageBox.warning(
+                    self.win,
+                    "No se pudo abrir",
+                    f"Error abriendo el archivo: {e}",
+                )
+        # btn_close o Esc -> no hace nada
 
     def on_previsualizar_informe(self) -> None:
         """Muestra el HTML renderizado del informe en un dialog modal.
