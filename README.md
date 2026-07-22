@@ -165,6 +165,66 @@ mientras tanto.
 
 ---
 
+## Configuracion del envio de correo electronico
+
+El sistema soporta **3 metodos de envio** del informe al cierre de turno.
+Se eligen en **Settings → Correo → seccion SMTP** con el dropdown **"Proveedor"**:
+
+### Gmail (la opcion mas facil, recomendada)
+
+1. Crear una cuenta Gmail separada para el sistema (ej: `fds.casino.ovalle@gmail.com`).
+2. Habilitar **verificacion en 2 pasos** en https://myaccount.google.com/security
+3. Generar un **App Password** en https://myaccount.google.com/apppasswords
+   (nombre: `Sistema FDS Casino Ovalle`)
+4. En el FDS: elegir **"Gmail"** en el dropdown, completar Usuario (la
+   casilla de Gmail) y Password (el App Password de 16 chars).
+5. **"Probar conexion"** -> si dice OK, **"Guardar cambios"**.
+
+Limitacion: el correo sale desde `fds.casino.ovalle@gmail.com`, no desde
+`Satovalle.OV@ovallecasinoresort.cl`. Gmail permite hasta 500 emails
+por dia por cuenta (sobra para 3 informes diarios).
+
+### Microsoft 365 / Outlook (App Password)
+
+Requiere que **el admin del tenant M365 habilite App Passwords**.
+Si en tu cuenta no aparece la opcion "Contraseña de aplicacion" en
+https://mysignins.microsoft.com/security-info, es probable que este
+deshabilitado a nivel organizacion. En ese caso, hablar con el admin
+o usar Gmail como alternativa.
+
+1. Activa MFA en https://mysignins.microsoft.com/security-info (metodo
+   preferido: Microsoft Authenticator).
+2. Crea un App Password.
+3. En el FDS: elegir **"M365 (App Password)"** en el dropdown,
+   completar Usuario (la direccion M365 real) y Password (el
+   App Password).
+4. **"Probar conexion"** -> OK -> **"Guardar cambios"**.
+
+### Microsoft 365 (OAuth2 / XOAUTH2)
+
+Para tenants con App Passwords deshabilitado. Requiere:
+- App Registration en Azure con permisos `Mail.Send`
+- (No implementado todavia en esta version - el placeholder esta en
+  el dropdown pero redirige al camino del App Password o Gmail.)
+
+### Como fallback automatico
+
+Si no se configura SMTP, el sistema intenta enviar via Outlook clasico
+(via `win32com` + COM Automation). Esto **no funciona con el "Nuevo
+Outlook"** de Microsoft 365 / Windows 11 — la unica salida es el HTML
+persistido en `backups/` que el operador puede abrir a mano y mandar
+manualmente.
+
+Si ves el dialog "Outlook no disponible (win32com no encontrado)"
+cuando apretas "Enviar Informe por Outlook", significa que:
+- No tenes Outlook clasico instalado en la VM, **o**
+- Tu organizacion forzo la transicion a "Nuevo Outlook".
+
+La fix limpia para el operador es configurar SMTP (con Gmail es la
+mas rapida — toma 5 minutos).
+
+---
+
 ## Stack tecnico
 
 - **Python 3.12+**
