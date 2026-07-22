@@ -887,6 +887,12 @@ class MainController:
             self.refrescar_lista_turno()
             self._refrescar_quick_stats()
             self._refrescar_footer()
+            # Si modificaron la config de correo (SMTP / Outlook), el
+            # chip del topbar tiene que actualizarse. Esto es clave
+            # cuando el operador conecta Gmail por primera vez: lo
+            # guarda y el chip pasa de "Sin Outlook" rojo a "SMTP
+            # listo: smtp.gmail.com:..." en verde.
+            self._refrescar_outlook_status()
             self._toast("Configuracion actualizada")
         dlg.finished_with_changes.connect(_on_changed)
         dlg.exec()
@@ -1223,10 +1229,22 @@ class MainController:
             return
 
         # Configurado. Marcamos verde con el detalle del servidor.
+        # El tooltip dice el perfil (Gmail/M365/Otro) + host:port + el
+        # From. Asi el operador ve en pantalla cual es la config
+        # sin tener que abrir Settings.
+        from services import smtp_profiles
+        perfil = smtp_profiles.find_profile(correo.get("smtp_perfil", "gmail"))
+        perfil_label = {
+            "gmail": "Gmail",
+            "m365_app": "M365",
+            "m365_oauth": "M365 OAuth2",
+            "otro": "SMTP",
+        }.get(perfil["key"], "SMTP")
         from_addr = user if "@" in user else user
         self.win.set_outlook_status(
             True,
-            f"SMTP listo: {host}:{correo.get('smtp_port', 587)} como {from_addr}"
+            f"{perfil_label} listo: {host}:{correo.get('smtp_port', 587)} "
+            f"como {from_addr}"
         )
 
     # ------------------------------------------------------------------
