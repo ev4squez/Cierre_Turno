@@ -308,9 +308,16 @@ class MainWindow(QMainWindow):
     def set_topbar_usuario(self, nombre: str, rol: str) -> None:
         self._topbar.set_usuario(nombre, rol)
 
-    def set_outlook_status(self, disponible: bool, mensaje: str = "") -> None:
-        """Actualiza el indicador de Outlook en el topbar."""
-        self._topbar.set_outlook_status(disponible, mensaje)
+    def set_outlook_status(self, disponible: bool, mensaje: str = "",
+                           label: str | None = None) -> None:
+        """Actualiza el indicador de Outlook en el topbar.
+
+        Acepta un ``label`` opcional que el controller puede pasar para
+        reflejar el proveedor real (Gmail / M365 / etc.) en lugar del
+        generico 'Outlook'. Si no se pasa, el topbar usa el fallback
+        legacy.
+        """
+        self._topbar.set_outlook_status(disponible, mensaje, label=label)
 
     def set_form_machine(self, m: dict | None) -> None:
         self._form.set_machine(m)
