@@ -64,7 +64,11 @@ class MainWindow(QMainWindow):
         self._empresa = cfg["empresa"]["nombre"]
         self._sistema = cfg["empresa"]["departamento"]
         self._usuario = ""
-        self._rol = "Operador de sala"
+        # Por defecto el chip del operador dice 'Operador'. Cuando se
+        # selecciona un tecnico especifico (TecnicosTab / login), el
+        # controller.refresh_topbar_usuario() lo sobreescribe con el
+        # campo rol de la DB (Tecnico.rol), o 'Operador' si esta vacio.
+        self._rol = "Operador"
 
         self._build_ui()
         self._wire_signals()

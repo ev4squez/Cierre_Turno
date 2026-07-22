@@ -8,6 +8,9 @@ Campos:
   - id: PK
   - nombre: nombre completo del tecnico (UNIQUE)
   - email: opcional, para usarlo despues en el informe
+  - rol: opcional. Texto libre que aparece abajo del nombre en el
+    chip del operador del topbar. Valores tipicos: 'Tecnico',
+    'Operador', 'Supervisor'. Por defecto NULL.
   - activo: soft-delete (papelera). Por defecto True.
   - es_usuario_actual: marca al tecnico que esta operando el sistema
     en esta maquina. Solo uno puede tener este flag = True.
@@ -32,6 +35,9 @@ class Tecnico(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     nombre: Mapped[str] = mapped_column(String(128), nullable=False, unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Rol libre: 'Tecnico', 'Operador', 'Supervisor', etc.
+    # Aparece abajo del nombre en el chip del operador del topbar.
+    rol: Mapped[str | None] = mapped_column(String(64), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     es_usuario_actual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
@@ -53,6 +59,7 @@ class Tecnico(Base):
             "id": self.id,
             "nombre": self.nombre,
             "email": self.email or "",
+            "rol": self.rol or "",
             "activo": self.activo,
             "es_usuario_actual": self.es_usuario_actual,
         }

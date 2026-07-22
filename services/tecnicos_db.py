@@ -198,6 +198,27 @@ def _desmarcar_usuario_actual(s) -> None:
 # ---------------------------------------------------------------------------
 
 
+def actualizar_rol(nombre: str, rol: str) -> dict:
+    """Actualiza el rol del tecnico (texto libre).
+
+    Valores tipicos: 'Tecnico', 'Operador', 'Supervisor', '' (vacio
+    para limpiar). El valor se persiste en ``Tecnico.rol`` y aparece
+    en el chip del operador del topbar.
+    """
+    nombre = (nombre or "").strip()
+    rol = (rol or "").strip()
+    if not nombre:
+        raise ValueError("Nombre vacio")
+    with get_session() as s:
+        t = s.scalars(
+            select(Tecnico).where(Tecnico.nombre.ilike(nombre))
+        ).first()
+        if t is None:
+            raise ValueError(f"Tecnico no encontrado: {nombre!r}")
+        t.rol = rol
+        return t.to_dict()
+
+
 def migrar_desde_config(forzar: bool = False) -> dict:
     """Migra los tecnicos que viven en config.json a la tabla Tecnico.
 
@@ -310,6 +331,7 @@ __all__ = (
     "eliminar",
     "reactivar",
     "marcar_como_usuario_actual",
+    "actualizar_rol",
     "migrar_desde_config",
     # legacy
     "listar_tecnicos",

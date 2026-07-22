@@ -105,11 +105,51 @@ def init_db() -> None:
 
     Importante: importa los modelos *aca*, no a nivel de modulo, para
     registrar todas las clases antes de llamar a ``create_all``.
+
+    Despues de ``create_all`` corre migraciones ligeras (ALTER TABLE)
+    para columnas que se agregaron a modelos existentes. Es idempotente:
+    chequea ``pragma_table_info`` antes de tocar el schema.
     """
     # Import side-effect: registra las clases en Base.metadata
     from database import models  # noqa: F401
 
-    Base.metadata.create_all(bind=get_engine(), checkfirst=True)
+    engine = get_engine()
+    Base.metadata.create_all(bind=engine, checkfirst=True)
+    _run_light_migrations(engine)
+
+
+def _run_light_migrations(engine: Engine) -> None:
+    """Migraciones idempotentes para columnas que se agregaron despues.
+
+    Patron: para cada columna agregada, si NO esta en la tabla
+    ``tecnicos``, ejecuta ``ALTER TABLE ... ADD COLUMN``. Si ya esta,
+    no hace nada. Asi el sistema queda forward-compatible con bases
+    preexistentes.
+
+    Mantener esta lista pequena: solo columnas agregadas al modelo
+    Tecnico desde el primer release. Cada vez que se suma una columna
+    con default-safe, agregar la entrada aca + la 'ALTER TABLE'
+    correspondiente.
+    """
+    from sqlalchemy import inspect, text
+
+    insp = inspect(engine)
+    if "tecnicos" not in insp.get_table_names():
+        return  # tabla no creada todavia; create_all la hace despues
+
+    cols = {c["name"] for c in insp.get_columns("tecnicos")}
+    migrations = [
+        # (columna, definicion SQL para ALTER TABLE)
+        ("rol", "VARCHAR(64)"),
+        # Si se agrega una columna nueva, sumarla aca:
+        # ("telefono", "VARCHAR(32)"),
+    ]
+    with engine.begin() as conn:
+        for name, defn in migrations:
+            if name not in cols:
+                conn.execute(text(
+                    f"ALTER TABLE tecnicos ADD COLUMN {name} {defn}"
+                ))
 
 
 def reset_db() -> None:

@@ -124,9 +124,12 @@ class MainController:
             from services import tecnicos_db
             actual = tecnicos_db.obtener_usuario_actual()
             if actual is not None:
+                # Si el tecnico tiene un 'rol' seteado (Tecnico, Operador,
+                # Supervisor), lo usamos. Si no, fallback 'Operador'.
+                rol = (actual.get("rol") or "").strip() or "Operador"
                 self.win.set_topbar_usuario(
                     nombre=actual["nombre"],
-                    rol="Operador de sala",
+                    rol=rol,
                 )
         except Exception:
             pass
