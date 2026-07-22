@@ -303,6 +303,75 @@ def armar_asunto(template: str, *, fecha, turno: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Workaround para Microsoft 365 / "New Outlook" (Win11+)
+# -----------------------------------------------------------------------------
+#
+# Microsoft esta forzando el 'New Outlook' (el cliente basado en web,
+# NO la app de escritorio clasica) en Windows 11 + Microsoft 365
+# desde 2024. El problema: New Outlook NO expone la API COM
+# Automation, asi que ``win32com.client.Dispatch('Outlook.Application')``
+# falla y el sistema cae al fallback de HTML persistido.
+#
+# Estos helpers inspeccionan/modifican el flag
+# ``HKCU\Software\Microsoft\Office\16.0\Outlook\Options\General\UseNewOutlook``
+# para detectar y desactivar ese modo. Solo aplica en Windows.
+
+import sys
+
+
+def is_new_outlook_active() -> bool | None:
+    """Devuelve True si el 'Nuevo Outlook' esta activo.
+
+    Resultado:
+      - None si no estamos en Windows o no podemos leer el registro.
+      - True si 'New Outlook' esta activo (COM deshabilitado).
+      - False si Outlook clasico esta activo (COM funciona).
+
+    Pensada para mostrar un mensaje claro al operador en vez de
+    dejarlo afuera sin entender.
+    """
+    if sys.platform != "win32":
+        return None
+    try:
+        import winreg  # type: ignore[import-not-found]
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Office\16.0\Outlook\Options\General",
+        ) as key:
+            try:
+                value, _ = winreg.QueryValueEx(key, "UseNewOutlook")
+                return bool(value)
+            except FileNotFoundError:
+                return False
+    except Exception:
+        return None
+
+
+def desactivar_new_outlook() -> bool:
+    """Fuerza Outlook a usar el cliente clasico (que expone COM).
+
+    Cambia ``UseNewOutlook`` a 0. El operador tendra que reiniciar
+    Outlook para que tome el cambio (Outlook lo lee al arrancar).
+
+    Devuelve True si pudo aplicar el cambio.
+    """
+    if sys.platform != "win32":
+        return False
+    try:
+        import winreg  # type: ignore[import-not-found]
+        with winreg.CreateKey(  # CreateKey abre o crea la clave
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Office\16.0\Outlook\Options\General",
+        ) as key:
+            winreg.SetValueEx(key, "UseNewOutlook", 0, winreg.REG_DWORD, 0)
+        _log("outlook_new_disabled", {"registry": "UseNewOutlook=0"})
+        return True
+    except Exception as e:
+        _log("outlook_new_disable_failed", {"error": str(e)})
+        return False
+
+
 # Codigos COM mas comunes que vemos cuando Outlook no puede enviar:
 #   -2147352567  -> 0x80004005 (E_FAIL generico, "no se encuentra un
 #                   archivo de datos" suele caer aca)
@@ -485,4 +554,6 @@ __all__ = (
     "enviar_informe_turno",
     "armar_asunto",
     "abrir_panel_control_correo",
+    "is_new_outlook_active",
+    "desactivar_new_outlook",
 )

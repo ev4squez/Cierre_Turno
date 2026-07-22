@@ -1056,6 +1056,11 @@ class MainController:
         o Outlook no responde), marcamos como no disponible. Asi el
         operador sabe de antemano que el informe se guardara como
         archivo .eml/.html en vez de mandarse directamente.
+
+        Tambien detecta el caso comun con Outlook 365 / Win11+
+        donde el operador tiene activado el 'New Outlook' (cliente
+        web que no expone COM). En ese caso, el tooltip incluye una
+        pista de como volver al Outlook clasico.
         """
         try:
             disponible = svc_outlook.outlook_disponible()
@@ -1067,6 +1072,22 @@ class MainController:
         if disponible:
             self.win.set_outlook_status(
                 True, "Outlook detectado - listo para enviar"
+            )
+            return
+        # No disponible: chequeamos si es por el "New Outlook" de M365
+        # para mostrar un mensaje accionable en vez del mensaje generico.
+        is_new = None
+        try:
+            is_new = svc_outlook.is_new_outlook_active()
+        except Exception:
+            pass
+        if is_new is True:
+            self.win.set_outlook_status(
+                False,
+                "New Outlook activo (no soporta COM). "
+                "Ir a Outlook -> esquina superior derecha -> "
+                "desactivar 'New Outlook' (icono de switch). "
+                "El informe se guardara como archivo."
             )
         else:
             self.win.set_outlook_status(
