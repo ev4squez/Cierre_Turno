@@ -503,6 +503,10 @@ class MainController:
                 tiempo_promedio_min=tiempo_real,
                 total_maquinas_catalogo=total_maquinas,
                 actividades=actividades,
+                # Pasamos la config para que el helper elija entre
+                # Outlook clasico (win32com) y SMTP directo segun
+                # smtp_enabled en config.json. Default: Outlook.
+                config=cfg,
             )
         finally:
             self.win.set_sending(False)
@@ -554,12 +558,76 @@ class MainController:
                 pass
             if resultado.get("categoria") == "perfil_no_configurado":
                 self._mostrar_dialog_perfil_no_configurado(archivo)
+            elif resultado.get("modo") == "smtp":
+                self._mostrar_dialog_smtp_fallo(resultado, archivo)
             else:
                 QMessageBox.warning(
                     self.win,
                     "Outlook no disponible",
                     f"{resultado.get('mensaje','')}\n\nArchivo guardado en:\n{archivo}",
                 )
+
+    def _mostrar_dialog_smtp_fallo(
+        self, resultado: dict, archivo_html: str
+    ) -> None:
+        """Dialog accionable cuando falla el envio SMTP.
+
+        El operador ve:
+          - Mensaje del error SMTP especifico (auth, timeout, TLS, etc).
+          - Boton 'Abrir Settings -> Correo' para corregir la config
+            (host, user, password, TLS).
+          - Boton 'Abrir HTML guardado' para que pueda enviarlo
+            manualmente mientras tanto.
+        """
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton
+        dlg = QDialog(self.win)
+        dlg.setWindowTitle("Error al enviar via SMTP")
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+        titulo = QLabel("<b>No se pudo enviar el informe via SMTP</b>")
+        layout.addWidget(titulo)
+        msg = QLabel(resultado.get("smtp_error") or resultado.get("mensaje", ""))
+        msg.setWordWrap(True)
+        layout.addWidget(msg)
+        if archivo_html:
+            layout.addWidget(QLabel(f"<i>HTML guardado en: {archivo_html}</i>"))
+        # Boton: abrir Settings -> tab Correo
+        btn_settings = QPushButton("Abrir Settings -> Correo")
+        btn_settings.clicked.connect(lambda: (
+            dlg.accept(),
+            self.on_settings(),
+        ))
+        layout.addWidget(btn_settings)
+        # Boton: abrir el HTML
+        if archivo_html:
+            from pathlib import Path as _P
+            btn_html = QPushButton("Abrir HTML guardado")
+            btn_html.clicked.connect(lambda: (
+                dlg.accept(),
+                self._abrir_archivo(_P(archivo_html)),
+            ))
+            layout.addWidget(btn_html)
+        # Boton: cerrar
+        btn_close = QPushButton("Cerrar")
+        btn_close.clicked.connect(dlg.accept)
+        layout.addWidget(btn_close)
+        dlg.exec()
+
+    def _abrir_archivo(self, path) -> None:
+        """Abre un archivo con el programa default del sistema."""
+        import os, subprocess, sys
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(str(path))  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.run(["open", str(path)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(path)], check=False)
+        except Exception as e:
+            QMessageBox.warning(
+                self.win, "No se pudo abrir", f"{path}\n\n{e}"
+            )
 
     def _mostrar_dialog_perfil_no_configurado(self, archivo_html: str) -> None:
         """Muestra un dialog accionable cuando Outlook no tiene perfil.
@@ -1050,7 +1118,14 @@ class MainController:
         """
 
     def _refrescar_outlook_status(self) -> None:
-        """Chequea si Outlook esta disponible y actualiza el dot del topbar.
+        """Chequea el modo de envio y actualiza el dot del topbar.
+
+        Desde 2026-07 el sistema soporta dos modos (elegido via
+        config.correo.smtp_enabled):
+          - Outlook clasico (default, via win32com) -> chip 'Outlook'
+          - SMTP directo (smtplib) -> chip 'SMTP'
+        El chequeo detecta cual esta activo y configura el chip.
+        Si ninguno esta OK, muestra el mensaje generico.
 
         El chequeo es best-effort: si falla (ej. pywin32 no instalado
         o Outlook no responde), marcamos como no disponible. Asi el
@@ -1060,8 +1135,25 @@ class MainController:
         Tambien detecta el caso comun con Outlook 365 / Win11+
         donde el operador tiene activado el 'New Outlook' (cliente
         web que no expone COM). En ese caso, el tooltip incluye una
-        pista de como volver al Outlook clasico.
+        pista de como volver al Outlook clasico, o un hint para
+        habilitar SMTP si quiere evitar el problema.
         """
+        # Primero chequeamos si SMTP esta configurado y usable
+        modo = "outlook"  # default
+        try:
+            from services import configuracion as svc_cfg_loader
+            cfg = svc_cfg_loader.obtener()
+            correo_cfg = cfg.get("correo", {})
+            if correo_cfg.get("smtp_enabled"):
+                modo = "smtp"
+        except Exception:
+            pass
+
+        if modo == "smtp":
+            self._refrescar_smtp_status()
+            return
+
+        # Modo Outlook: sigue el flujo original
         try:
             disponible = svc_outlook.outlook_disponible()
         except Exception as e:
@@ -1087,6 +1179,7 @@ class MainController:
                 "New Outlook activo (no soporta COM). "
                 "Ir a Outlook -> esquina superior derecha -> "
                 "desactivar 'New Outlook' (icono de switch). "
+                "Tambien podes habilitar SMTP en Settings -> Correo. "
                 "El informe se guardara como archivo."
             )
         else:
@@ -1094,6 +1187,47 @@ class MainController:
                 False,
                 "Outlook no disponible - el informe se guardara como archivo"
             )
+
+    def _refrescar_smtp_status(self) -> None:
+        """Actualiza el chip del topbar segun el estado de SMTP.
+
+        El chip muestra 'Outlook' en verde si SMTP esta bien configurado
+        (host + user + password llenos), amarillo si falta algun campo,
+        rojo si faltan campos criticos (host o user).
+
+        No envia mail real (eso se hace al apretar 'Enviar Informe').
+        Solo refleja el estado de la config persistida.
+        """
+        try:
+            from services import configuracion as svc_cfg_loader
+            correo = svc_cfg_loader.obtener().get("correo", {})
+        except Exception:
+            correo = {}
+
+        host = (correo.get("smtp_host") or "").strip()
+        user = (correo.get("smtp_user") or "").strip()
+        password = correo.get("smtp_password") or ""
+        smtp_enabled = bool(correo.get("smtp_enabled"))
+
+        if not smtp_enabled:
+            # SMTP no esta habilitado: caemos al flujo Outlook
+            # (que ya fue chequeado por el caller).
+            return
+
+        if not host or not user or not password:
+            self.win.set_outlook_status(
+                False,
+                "SMTP habilitado pero falta host / usuario / password. "
+                "Completa en Settings -> Correo."
+            )
+            return
+
+        # Configurado. Marcamos verde con el detalle del servidor.
+        from_addr = user if "@" in user else user
+        self.win.set_outlook_status(
+            True,
+            f"SMTP listo: {host}:{correo.get('smtp_port', 587)} como {from_addr}"
+        )
 
     # ------------------------------------------------------------------
     # Helpers

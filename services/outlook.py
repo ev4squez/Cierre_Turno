@@ -494,6 +494,7 @@ def enviar_informe_turno(
     firmante: str | None = None,
     total_maquinas_catalogo: int | None = None,
     actividades: list[dict] | None = None,
+    config: dict | None = None,
 ) -> dict[str, Any]:
     """Helper que une render + envio. Usado por el controller.
 
@@ -538,6 +539,33 @@ def enviar_informe_turno(
         actividades=actividades,
     )
     asunto = armar_asunto(asunto_template, fecha=resumen.fecha, turno=turno_etiqueta)
+
+    # Si SMTP esta habilitado en config, enviamos directo via smtplib
+    # (alternativa a Outlook clasico para operadores que usan el
+    # 'Nuevo Outlook' / app Mail de Win11 que no expone COM).
+    correo_cfg = (config or {}).get("correo", {}) if config else {}
+    if not correo_cfg:
+        # Fallback: leer del config persistido
+        try:
+            from services import configuracion as svc_cfg
+            correo_cfg = svc_cfg.obtener().get("correo", {})
+        except Exception:
+            correo_cfg = {}
+    if correo_cfg.get("smtp_enabled"):
+        from services import smtp_sender
+        return smtp_sender.enviar(
+            host=correo_cfg.get("smtp_host", "smtp.office365.com"),
+            port=int(correo_cfg.get("smtp_port", 587)),
+            user=correo_cfg.get("smtp_user", ""),
+            password=correo_cfg.get("smtp_password", ""),
+            use_tls=bool(correo_cfg.get("smtp_use_tls", True)),
+            from_addr=correo_cfg.get("smtp_user", ""),
+            to_addrs=destinatarios,
+            cc_addrs=cc or [],
+            subject=asunto,
+            html_body=html,
+        )
+
     return enviar_informe(
         html=html,
         asunto=asunto,
