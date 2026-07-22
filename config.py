@@ -118,6 +118,17 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "asunto_template": "Informe Diario FDS - {fecha} - {turno}",
         "firma": "Departamento Tecnico y Sistemas\nCasino Ovalle",
         "modo_envio": "display",  # "display" muestra el correo; "send" lo envia directo
+        # --- SMTP directo (alternativa a Outlook clasico) ---
+        # Si el operador no tiene Outlook clasico instalado (ej. usa el
+        # 'Nuevo Outlook' / app Mail de Win11), puede configurar un SMTP
+        # para enviar directamente. Soporta M365 con App Password o
+        # cualquier servidor SMTP+STARTTLS.
+        "smtp_enabled": False,       # si False, sigue usando Outlook (win32com)
+        "smtp_host": "smtp.office365.com",
+        "smtp_port": 587,            # 587 = STARTTLS (recomendado); 465 = SSL
+        "smtp_user": "",             # ej. "Satovalle.OV@ovallecasinoresort.cl"
+        "smtp_password": "",         # App Password de Microsoft (no la password normal)
+        "smtp_use_tls": True,        # STARTTLS si port=587, SSL si port=465
     },
     "turno": {
         # Turno actual detectable por hora del sistema. Editable.
