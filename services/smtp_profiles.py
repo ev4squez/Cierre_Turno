@@ -23,19 +23,12 @@ El dropdown enumera de menor a mayor friccion:
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any
+
+SMTPProfile = dict[str, Any]  # simple alias (TypedDict no aporta aqui)
 
 
-class SMTPProfile(TypedDict, total=False):
-    """Perfil SMTP completo: campos autocompletados + ayuda."""
-    key: str
-    label: str
-    host: str
-    puerto: int
-    uso_tls: bool
-    necesita_app_password: bool
-    instructions: str
-    url_app_password: str
+
 
 
 # Orden de la dropdown UI (de lo mas simple a lo mas complejo)
@@ -109,14 +102,14 @@ _PROFILES: list[SMTPProfile] = [
 
 def get_profiles() -> list[SMTPProfile]:
     """Devuelve la lista de perfiles disponibles (copia defensiva)."""
-    return [dict(p) for p in _PROFILES]
+    return [dict(p) for p in _PROFILES]  # type: ignore[misc]
 
 
 def find_profile(key: str) -> SMTPProfile:
     """Devuelve el perfil por key, o el 'otro' si no existe."""
     for p in _PROFILES:
         if p["key"] == key:
-            return dict(p)
+            return dict(p)  # type: ignore[misc]
     return _PROFILES[-1]  # 'otro'
 
 

@@ -6,7 +6,7 @@ Win11 - que no expone COM).
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -119,6 +119,28 @@ class CorreoTab(QFrame):
         smtp_form = QFormLayout()
         smtp_form.setSpacing(8)
 
+        # Dropdown: proveedor SMTP. Al cambiar, autocompleta host/puerto/
+        # TLS y muestra las instrucciones para generar el App Password.
+        from services import smtp_profiles
+        self._cb_perfil = QComboBox()
+        self._perfiles = {p["key"]: p for p in smtp_profiles.get_profiles()}
+        for p in smtp_profiles.get_profiles():
+            self._cb_perfil.addItem(p["label"], p["key"])
+        self._cb_perfil.currentIndexChanged.connect(self._on_perfil_changed)
+        smtp_form.addRow("Proveedor:", self._cb_perfil)
+
+        # Help text: instrucciones por proveedor (cambia al cambiar dropdown)
+        self._lb_smtp_help = QLabel("")
+        self._lb_smtp_help.setWordWrap(True)
+        self._lb_smtp_help.setStyleSheet(
+            "color:#475569; font-size:11px; padding:6px; "
+            "background:#F1F5F9; border-radius:4px;"
+        )
+        self._lb_smtp_help.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        smtp_form.addRow(self._lb_smtp_help)
+
         self._chk_smtp_enabled = QCheckBox(
             "Enviar via SMTP en lugar de Outlook clasico"
         )
@@ -126,7 +148,7 @@ class CorreoTab(QFrame):
         smtp_form.addRow(self._chk_smtp_enabled)
 
         self._in_smtp_host = QLineEdit()
-        self._in_smtp_host.setPlaceholderText("smtp.office365.com")
+        self._in_smtp_host.setPlaceholderText("smtp.gmail.com o smtp.office365.com")
         smtp_form.addRow("Servidor SMTP:", self._in_smtp_host)
 
         self._sp_smtp_port = QSpinBox()
@@ -135,12 +157,12 @@ class CorreoTab(QFrame):
         smtp_form.addRow("Puerto:", self._sp_smtp_port)
 
         self._in_smtp_user = QLineEdit()
-        self._in_smtp_user.setPlaceholderText("Satovalle.OV@ovallecasinoresort.cl")
+        self._in_smtp_user.setPlaceholderText("email-del-casino@gmail.com")
         smtp_form.addRow("Usuario:", self._in_smtp_user)
 
         self._in_smtp_password = QLineEdit()
         self._in_smtp_password.setEchoMode(QLineEdit.Password)
-        self._in_smtp_password.setPlaceholderText("App Password de Microsoft")
+        self._in_smtp_password.setPlaceholderText("App Password (16 chars)")
         smtp_form.addRow("Password:", self._in_smtp_password)
 
         self._chk_smtp_tls = QCheckBox(
@@ -180,15 +202,24 @@ class CorreoTab(QFrame):
         self._cb_modo.setCurrentText(correo.get("modo_envio", "display"))
         self._in_asunto.setText(correo.get("asunto_template", "Informe Diario FDS - {fecha} - {turno}"))
         self._ta_firma.setPlainText(correo.get("firma", ""))
+        # Perfil SMTP: si esta persistido y existe, lo seleccionamos.
+        # Si no, default = 'gmail' (mas facil para el operador).
+        perfil_key = correo.get("smtp_perfil", "gmail")
+        idx = self._cb_perfil.findData(perfil_key)
+        if idx >= 0:
+            self._cb_perfil.setCurrentIndex(idx)
         # SMTP
         self._chk_smtp_enabled.setChecked(bool(correo.get("smtp_enabled", False)))
-        self._in_smtp_host.setText(correo.get("smtp_host", "smtp.office365.com"))
+        self._in_smtp_host.setText(correo.get("smtp_host", "smtp.gmail.com"))
         self._sp_smtp_port.setValue(int(correo.get("smtp_port", 587)))
         self._in_smtp_user.setText(correo.get("smtp_user", ""))
         self._in_smtp_password.setText(correo.get("smtp_password", ""))
         self._chk_smtp_tls.setChecked(bool(correo.get("smtp_use_tls", True)))
         # Ajustamos el estado enabled/disabled de los campos
         self._on_smtp_toggle(self._chk_smtp_enabled.isChecked())
+        # Forzar el handler de perfil para que setee los defaults si
+        # el campo host esta vacio (caso primera carga).
+        self._on_perfil_changed(self._cb_perfil.currentIndex())
 
     def _on_listas_changed(self, *args) -> None:
         # El save real se hace al apretar "Guardar cambios".
@@ -197,6 +228,8 @@ class CorreoTab(QFrame):
     def _on_smtp_toggle(self, checked: bool) -> None:
         """Habilita/deshabilita los campos SMTP segun el checkbox."""
         for w in (
+            self._cb_perfil,
+            self._lb_smtp_help,
             self._in_smtp_host,
             self._sp_smtp_port,
             self._in_smtp_user,
@@ -205,6 +238,31 @@ class CorreoTab(QFrame):
             self._btn_probar_smtp,
         ):
             w.setEnabled(checked)
+
+    def _on_perfil_changed(self, index: int) -> None:
+        """Autocompleta host/puerto/TLS/instrucciones segun el proveedor.
+
+        Solo lo hace si el campo host esta vacio o coincide con el del
+        perfil anterior (asi no pisamos si el operador ya tipeo una
+        direccion custom). Lo check 'enabled' lo respeta el handler
+        '_on_smtp_toggle' al haber pasado por el toggle del proveedor.
+        """
+        key = self._cb_perfil.itemData(index)
+        perfil = self._perfiles.get(key)
+        if not perfil:
+            return
+        self._lb_smtp_help.setText(perfil["instructions"])
+        # Si el host actual coincide con algun perfil conocido, lo
+        # actualizamos; si es custom, lo dejamos en paz (caso 'otro').
+        cur_host = (self._in_smtp_host.text() or "").strip()
+        host_changes = not cur_host or any(
+            cur_host == p["host"] for p in self._perfiles.values() if p["host"]
+        )
+        if host_changes or perfil["key"] == "otro":
+            if perfil["host"]:  # dejar vacio si es 'otro' (el operador tipea)
+                self._in_smtp_host.setText(perfil["host"])
+            self._sp_smtp_port.setValue(perfil["puerto"])
+            self._chk_smtp_tls.setChecked(bool(perfil["uso_tls"]))
 
     def _on_probar_smtp(self) -> None:
         """Prueba la conexion SMTP sin enviar nada."""
@@ -248,6 +306,9 @@ class CorreoTab(QFrame):
                 "modo_envio": self._cb_modo.currentText(),
                 "asunto_template": self._in_asunto.text().strip(),
                 "firma": self._ta_firma.toPlainText().strip(),
+                "smtp_perfil": self._cb_perfil.itemData(
+                    self._cb_perfil.currentIndex()
+                ) or "gmail",
                 "smtp_enabled": self._chk_smtp_enabled.isChecked(),
                 "smtp_host": self._in_smtp_host.text().strip(),
                 "smtp_port": self._sp_smtp_port.value(),
